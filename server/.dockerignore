@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+vendor/
+node_modules/
+
+# Build
+*.o
+*.a
+*.so
+.dylib
+*.exe
+*.dll
+
+# Temp/Test
+tmp/
+temp/
+*.log
+.env
+
+# Project specific
+temp_build.txt
+migrations/
+seeds/
