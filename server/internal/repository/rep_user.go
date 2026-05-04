@@ -8,7 +8,6 @@ import (
 func (repository *Repository) CreateUser(user *models.User) error {
 	return repository.db.Create(user).Error
 }
-
 // Găsește un utilizator după email
 func (repository *Repository) FindUserByEmail(email string) (*models.User, error) {
 	var user models.User

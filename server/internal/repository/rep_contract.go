@@ -8,7 +8,6 @@ import (
 func (repository *Repository) CreateContract(contract *models.Contract) error {
 	return repository.db.Create(contract).Error
 }
-
 func (repository *Repository) FindContractByID(id uint) (*models.Contract, error) {
 	var contract models.Contract
 	// Încercăm să găsim contractul după ID
@@ -21,17 +20,14 @@ func (repository *Repository) FindContractByID(id uint) (*models.Contract, error
 	// 2. Dacă totul e ok, returnăm adresa obiectului plin
 	return &contract, nil
 }
-
 func (repository *Repository) FindContractsByClientID(clientID uint) ([]models.Contract, error) {
 	var contracts []models.Contract
 	err := repository.db.Where("client_id = ?", clientID).Find(&contracts).Error
 	return contracts, err
 }
-
 func (repository *Repository) CreateContractAddress(addr *models.ContractAddress) error {
 	return repository.db.Create(addr).Error
 }
-
 func (repository *Repository) FindContractAddressByID(id uint) (*models.ContractAddress, error) {
 	var addr models.ContractAddress
 	err := repository.db.First(&addr, id).Error
@@ -42,4 +38,3 @@ func (repository *Repository) FindContractAddressByID(id uint) (*models.Contract
 	// 2. Dacă totul e ok, returnăm adresa obiectului plin
 	return &addr, nil
 }
-
