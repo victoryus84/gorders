@@ -32,9 +32,8 @@ func SetupRoutes(router *gin.Engine, hdl *handler.Handlers) {
 
 		contracts := api.Group("/contracts")
 		{
-			contracts.GET("", hdl.Contract.GetContracts)
 			contracts.POST("", hdl.Contract.CreateContract)
-			contracts.GET("/search", hdl.Contract.SearchContracts)
+			contracts.GET("/:client_id", hdl.Contract.GetContractsByClientID)
 		}
 	}
 }

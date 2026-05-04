@@ -13,6 +13,7 @@ type Handlers struct {
 	Core   *CoreHandler
 	User   *UserHandler
 	Client *ClientHandler
+	Contract *ContractHandler
 	// Aici vei adăuga Order, Product, etc. pe viitor
 }
 

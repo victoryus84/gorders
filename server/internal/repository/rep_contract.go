@@ -22,7 +22,7 @@ func (repository *Repository) FindContractByID(id uint) (*models.Contract, error
 	return &contract, nil
 }
 
-func (repository *Repository) FindContractByClientID(clientID uint) ([]models.Contract, error) {
+func (repository *Repository) FindContractsByClientID(clientID uint) ([]models.Contract, error) {
 	var contracts []models.Contract
 	err := repository.db.Where("client_id = ?", clientID).Find(&contracts).Error
 	return contracts, err

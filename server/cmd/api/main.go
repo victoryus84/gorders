@@ -64,12 +64,13 @@ func main() {
 	hdl_core := handler.NewCoreHandler(db, Version, Commit)
 	hdl_user := handler.NewUserHandler(svc_user)
 	hdl_client := handler.NewClientHandler(svc_client)
-	
+	hdl_contract := handler.NewContractHandler(svc_contract)
 	
 	allHandlers := &handler.Handlers{
     Core: hdl_core,
     User:   hdl_user,
     Client: hdl_client,
+    Contract: hdl_contract,
 }
 	// Setup API routes
 	router.SetupRoutes(r, allHandlers)
