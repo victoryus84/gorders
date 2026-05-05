@@ -4,7 +4,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/dto"
+	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/models"
 )
 
@@ -26,7 +28,7 @@ type contractService struct {
 	repo ContractRepository
 }
 
-func NewContractService(repo ContractRepository) ContractService {
+func NewContractService(repo ContractRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
 	return &contractService{repo: repo}
 }
 

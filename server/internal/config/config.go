@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -35,6 +36,11 @@ type Config struct {
 	// Rate Limiting
 	RateLimitRequests int
 	RateLimitWindow   int // seconds
+	
+	// Kafka
+	KafkaAddr         string
+    KafkaTopicPattern string
+    
 }
 
 var (
@@ -67,6 +73,10 @@ func Load() *Config {
 			AppEnv:         getEnv("APP_ENV", "development"),
 			LogLevel:       getEnv("LOG_LEVEL", "info"),
 			MaxRequestSize: getEnvInt("MAX_REQUEST_SIZE", 10),
+
+		 	// Kafka
+    		KafkaAddr:  	getEnv("KAFKA_BROKERS", ""),
+    		KafkaTopicPattern: getEnv("KAFKA_TOPIC_PATTERN", ""),
 
 			// CORS
 			CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
@@ -142,5 +152,23 @@ func (c *Config) Validate() error {
 	if len(c.JWTSecret) < 32 {
 		return fmt.Errorf("JWT_SECRET must be at least 32 characters for security")
 	}
+	if c.KafkaAddr == "" {
+        return fmt.Errorf("KAFKA_BROKERS is required")
+    }
+	if c.KafkaTopicPattern == "" {
+        return fmt.Errorf("KAFKA_TOPIC_PATTERN is missing in .env")
+    }
+    // Verificăm dacă ai pus %s în pattern
+    if !strings.Contains(c.KafkaTopicPattern, "%s") {
+        return fmt.Errorf("KAFKA_TOPIC_PATTERN must contain '%%s' (e.g., gorders.%%s.events)")
+    }
 	return nil
+}
+
+func (c *Config) GetTopic(domain string) string {
+    if domain == "" {
+        // Aici poți să faci log.Fatal sau să returnezi un topic de tip "garbage/dead-letter"
+        return "internal.unknown.events" 
+    }
+    return fmt.Sprintf(c.KafkaTopicPattern, domain)
 }

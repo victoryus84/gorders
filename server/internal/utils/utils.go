@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -53,4 +55,31 @@ func ParseBody[T any](c *gin.Context) ([]T, error) {
 
 	// Dacă am ajuns aici, înseamnă că niciun format nu a mers
 	return nil, errors.New("nu s-au putut decoda datele (nici JSON, nici XML)")
+}
+func GeneratePassword(length int) (string, error) {
+
+	// Setul de caractere pe care îl vom folosi
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+"
+	// 1. Verificăm lungimea (Protecție la erori)
+	if length < 8 {
+		return "", fmt.Errorf("lungimea %d este prea mică pentru o parolă sigură", length)
+	}
+
+	// Creăm o felie (slice) de caractere de lungimea dorită
+	password := make([]byte, length)
+
+	for i := 0; i < length; i++ {
+		// Alegem un index aleatoriu din charset
+		// Folosim crypto/rand pentru securitate maximă
+		index, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err // Returnăm eroarea dacă "mașinăria" de noroc s-a stricat
+		}
+
+		// Punem caracterul ales în parola noastră
+		password[i] = charset[index.Int64()]
+	}
+
+	// Transformăm felia de bytes într-un string frumos
+	return string(password), nil
 }

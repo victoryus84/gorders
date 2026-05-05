@@ -8,6 +8,7 @@ import (
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/database"
 	"github.com/victoryus84/gorders/internal/handler"
+	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/middleware"
 	"github.com/victoryus84/gorders/internal/repository"
@@ -27,6 +28,10 @@ func main() {
 	// Load configuration (singleton)
 	cfg := config.Load()
 
+	// Pornim Producer-ul cu adresa din .env
+    kp := kafka.NewProducer(cfg.KafkaAddr)
+    defer kp.Close()
+
 	// Initialize structured logging
 	logger.Init(cfg.LogLevel)
 	defer logger.Logger.Sync()
@@ -41,9 +46,9 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Create services
-	svc_user := service.NewUserService(repo, cfg)
-	svc_client := service.NewClientService(repo)
-	svc_contract := service.NewContractService(repo)
+	svc_user := service.NewUserService(repo, cfg) 
+	svc_client := service.NewClientService(repo, cfg, kp)
+	svc_contract := service.NewContractService(repo, cfg, kp)
 	
 	logger.LogInfo("✅ All services initialized")
 

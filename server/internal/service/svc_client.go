@@ -1,9 +1,13 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 
+	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/dto"
+	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/models"
 )
 
@@ -29,16 +33,19 @@ type ClientService interface {
 // 2. Facem structura PRIVATĂ (schimbăm 'C' mare în 'c' mic)
 type clientService struct {
 	repo ClientRepository
+	cfg *config.Config
+	kafka *kafka.Producer
 }
 
-func NewClientService(repo ClientRepository) ClientService {
-	return &clientService{repo: repo}
+func NewClientService(repo ClientRepository, cfg *config.Config, kp *kafka.Producer) ClientService {
+	return &clientService{repo: repo, cfg: cfg, kafka: kp}
 }
 
 // ProcessClientImport - Logica masivă de import pe care am scos-o din Handler
 func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult {
 	created := make([]*models.Client, 0)
 	skipped := make([]map[string]string, 0)
+    topic := s.cfg.GetTopic("clients")
 
 	for _, req := range requests {
 		// A. Validare de bază (Logica ta din API-ul vechi)
@@ -73,6 +80,19 @@ func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Import
 			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": err.Error()})
 			continue
 		}
+
+		// F. KAFKA 
+        // Folosim gorutină pentru a nu încetini importul
+        go func(c *models.Client) {
+			payload, _ := json.Marshal(c)
+
+			// Publish-ul tău universal
+			_ = s.kafka.Publish(context.Background(), topic, c.FiscalID, payload)
+
+			// Notă: Dacă ai un logger (ex: zap, logrus), aici ar trebui să fie:
+			// s.logger.Error("kafka publish failed", "client", c.FiscalID, "err", err)
+        }(client)
+
 		created = append(created, client)
 	}
 
