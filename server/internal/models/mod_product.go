@@ -8,11 +8,11 @@ import (
 type Product struct {
 	gorm.Model
 	UUIDModel      `gorm:"embedded"`
-	Name           string       `gorm:"type:varchar(100);not null"`              // Numele produsului
-	Price          float64      `gorm:"type:decimal(10,2);default:0.0"`          // Prețul produsului
-	Description    string       `gorm:"type:text"`                               // Descrierea produsului
 	ProductGroupID uint         `gorm:"not null"`                                // ID-ul grupei de produse
 	ProductGroup   ProductGroup `gorm:"foreignKey:ProductGroupID;references:ID"` // Grupa de produse din care face parte
+	Name           string       `gorm:"type:varchar(100);not null"`              // Numele produsului
+	Description    string       `gorm:"type:text"`                               // Descrierea produsului
+	Price          float64      `gorm:"type:decimal(10,2);default:0.0"`          // Prețul produsului
 	UnitID         uint         `gorm:"not null"`                                // ID-ul unității de măsură
 	Unit           Unit         `gorm:"foreignKey:UnitID;references:ID"`         // Unitatea de măsură a produsului
 	VatTaxID       uint         `gorm:"not null"`                                // ID-ul taxei VAT

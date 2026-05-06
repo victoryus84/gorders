@@ -8,9 +8,12 @@ import (
 type Client struct {
 	gorm.Model
 	UUIDModel     `gorm:"embedded"`
+	ClientGroupID uint            `gorm:"not null"`                         // Foreign key to ClientGroup
+	ClientGroup   ClientGroup     `gorm:"foreignKey:ClientGroupID;not null"` // Grupa din care face parte clientul
 	ClientTypeID  uint            `gorm:"not null"`                         // Foreign key to ClientType
 	ClientType    ClientType      `gorm:"foreignKey:ClientTypeID;not null"` // Tipul clientului ("individual", "company", etc.)
 	Name          string          `gorm:"type:varchar(100);not null"`       // Numele clientului
+	Description   string          `gorm:"type:text"`                        // Descrierea clientului
 	FiscalID      string          `gorm:"type:varchar(15);unique;not null"` // Codul fiscal al clientului (unic)
 	Email         *string         `gorm:"type:varchar(100);unique"`         // Email-ul clientului (unic)
 	Phone         string          `gorm:"type:varchar(50)"`                 // Telefonul clientului
@@ -20,6 +23,14 @@ type Client struct {
 	Addresses     []ClientAddress `gorm:"foreignKey:ClientID"`              // Adresele asociate clientului
 }
 
+// ********** ClientGroup - Grupa de Clienti **********
+type ClientGroup struct {
+	gorm.Model
+	UUIDModel   `gorm:"embedded"`
+	Name        string    `gorm:"type:varchar(100);not null;unique"` // Numele grupei (ex: "Băuturi", "Electronice")
+	Description string    `gorm:"type:text"`                         // Descrierea grupei
+	Clients    []Client   `gorm:"foreignKey:ClientGroupID"`            // O grupă are mai mulți clienți
+}
 // ********** ClientAddress - Adresă asociată clientului **********
 type ClientAddress struct {
 	gorm.Model
