@@ -19,7 +19,7 @@ COPY . .
 # Go 1.26 beneficiază enorm de cache-ul de compilare refolosit
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /app/server ./cmd/server
+    go build -ldflags="-s -w" -o /app/api ./cmd/api
 
 # 2) Runtime stage
 # Am updatat alpine la o versiune de început de 2026
@@ -34,7 +34,7 @@ ENV TZ=Europe/Chisinau
 WORKDIR /app
 
 # Luăm binarul din builder
-COPY --from=builder /app/server /app/server
+COPY --from=builder /app/api /app/api
 
 # Securitate: Creăm utilizatorul fără privilegii
 RUN adduser -D appuser
@@ -46,4 +46,4 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=3s \
     CMD wget --no-check-certificate --quiet --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
-ENTRYPOINT ["/app/server"]
+ENTRYPOINT ["/app/api"]
