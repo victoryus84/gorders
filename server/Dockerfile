@@ -7,13 +7,13 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY server/go.mod server/go.sum ./
+COPY go.mod go.sum ./
 
 # OPTIMIZARE: Folosim un mount cache pentru a nu descărca modulele la fiecare build
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-COPY server/. .
+COPY . .
 
 # OPTIMIZARE: Folosim mount cache și pentru build-ul propriu-zis
 # Go 1.26 beneficiază enorm de cache-ul de compilare refolosit
