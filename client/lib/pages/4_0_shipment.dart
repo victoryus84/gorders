@@ -1,7 +1,7 @@
 // Отгрузка 4мес.
 
 import 'package:flutter/material.dart';
-import 'package:frontend/widgets/back_menu.dart';
+import 'package:gorders_mobile/widgets/back_menu.dart';
 
 class ShipmentPage extends StatelessWidget {
   final String title;

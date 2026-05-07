@@ -1,7 +1,7 @@
 // Взаиморасчеты
 
 import 'package:flutter/material.dart';
-import 'package:frontend/widgets/back_menu.dart';
+import 'package:gorders_mobile/widgets/back_menu.dart';
 
 class CalculationsPage extends StatelessWidget {
   final String title;
