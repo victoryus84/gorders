@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/victoryus84/gorders/internal/config"
+	"github.com/victoryus84/gorders/server/internal/config"
 )
 
 // RateLimiter implements token bucket rate limiting

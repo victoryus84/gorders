@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"strings"		
+	"strings"
 
-	"github.com/victoryus84/gorders/internal/models"
+	"github.com/victoryus84/gorders/server/internal/models"
 )
 
 // Client methods

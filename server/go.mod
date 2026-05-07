@@ -1,4 +1,4 @@
-module github.com/victoryus84/gorders
+module github.com/victoryus84/gorders/server
 
 go 1.26.1
 

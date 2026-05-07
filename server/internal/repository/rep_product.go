@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/victoryus84/gorders/internal/models"
+	"github.com/victoryus84/gorders/server/internal/models"
 )
 
 // Product methods

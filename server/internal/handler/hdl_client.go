@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/victoryus84/gorders/internal/dto"
-	"github.com/victoryus84/gorders/internal/service"
-	"github.com/victoryus84/gorders/internal/utils"
+	"github.com/victoryus84/gorders/server/internal/dto"
+	"github.com/victoryus84/gorders/server/internal/service"
+	"github.com/victoryus84/gorders/server/internal/utils"
 )
 
 type ClientHandler struct {

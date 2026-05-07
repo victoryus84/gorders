@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/victoryus84/gorders/internal/logger"
+	"github.com/victoryus84/gorders/server/internal/logger"
 	"go.uber.org/zap"
 )
 

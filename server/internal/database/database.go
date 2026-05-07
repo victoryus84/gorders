@@ -2,9 +2,9 @@ package database
 
 import (
 	"log"
-	"github.com/victoryus84/gorders/internal/config" // Importă pachetul tău de config
-	"github.com/victoryus84/gorders/migrations"
-	"github.com/victoryus84/gorders/internal/seeds"
+	"github.com/victoryus84/gorders/server/internal/config" // Importă pachetul tău de config
+	"github.com/victoryus84/gorders/server/migrations"
+	"github.com/victoryus84/gorders/server/internal/seeds"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
