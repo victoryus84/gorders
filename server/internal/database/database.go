@@ -3,7 +3,7 @@ package database
 import (
 	"log"
 	"github.com/victoryus84/gorders/internal/config" // Importă pachetul tău de config
-	"github.com/victoryus84/gorders/migrations"
+	"github.com/victoryus84/gorders/internal/migrations"
 	"github.com/victoryus84/gorders/internal/seeds"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
