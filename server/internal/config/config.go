@@ -100,6 +100,9 @@ func Load() *Config {
 			cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
 		)
 
+		// DEBUG: Scoate asta după ce te convingi că merge
+        fmt.Printf("🔍 DSN final: [%s]\n", cfg.DSN)
+
 		// Validate critical fields
 		if err := cfg.Validate(); err != nil {
 			fmt.Printf("❌ Config validation failed: %v\n", err)
