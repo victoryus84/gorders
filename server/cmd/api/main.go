@@ -5,15 +5,15 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
-	"github.com/victoryus84/gorders/server/internal/config"
-	"github.com/victoryus84/gorders/server/internal/database"
-	"github.com/victoryus84/gorders/server/internal/handler"
-	"github.com/victoryus84/gorders/server/internal/kafka"
-	"github.com/victoryus84/gorders/server/internal/logger"
-	"github.com/victoryus84/gorders/server/internal/middleware"
-	"github.com/victoryus84/gorders/server/internal/repository"
-	"github.com/victoryus84/gorders/server/internal/router"
-	"github.com/victoryus84/gorders/server/internal/service"
+	"github.com/victoryus84/gorders/internal/config"
+	"github.com/victoryus84/gorders/internal/database"
+	"github.com/victoryus84/gorders/internal/handler"
+	"github.com/victoryus84/gorders/internal/kafka"
+	"github.com/victoryus84/gorders/internal/logger"
+	"github.com/victoryus84/gorders/internal/middleware"
+	"github.com/victoryus84/gorders/internal/repository"
+	"github.com/victoryus84/gorders/internal/router"
+	"github.com/victoryus84/gorders/internal/service"
 	"go.uber.org/zap"
 )
 
@@ -29,8 +29,8 @@ func main() {
 	cfg := config.Load()
 
 	// Pornim Producer-ul cu adresa din .env
-    kp := kafka.NewProducer(cfg.KafkaAddr)
-    defer kp.Close()
+	kp := kafka.NewProducer(cfg.KafkaAddr)
+	defer kp.Close()
 
 	// Initialize structured logging
 	logger.Init(cfg.LogLevel)
@@ -46,10 +46,10 @@ func main() {
 	repo := repository.NewRepository(db)
 
 	// Create services
-	svc_user := service.NewUserService(repo, cfg) 
+	svc_user := service.NewUserService(repo, cfg)
 	svc_client := service.NewClientService(repo, cfg, kp)
 	svc_contract := service.NewContractService(repo, cfg, kp)
-	
+
 	logger.LogInfo("✅ All services initialized")
 
 	// Setup Gin router
@@ -70,13 +70,13 @@ func main() {
 	hdl_user := handler.NewUserHandler(svc_user)
 	hdl_client := handler.NewClientHandler(svc_client)
 	hdl_contract := handler.NewContractHandler(svc_contract)
-	
+
 	allHandlers := &handler.Handlers{
-    Core: hdl_core,
-    User:   hdl_user,
-    Client: hdl_client,
-    Contract: hdl_contract,
-}
+		Core:     hdl_core,
+		User:     hdl_user,
+		Client:   hdl_client,
+		Contract: hdl_contract,
+	}
 	// Setup API routes
 	router.SetupRoutes(r, allHandlers)
 

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/victoryus84/gorders/server/internal/config"
-	"github.com/victoryus84/gorders/server/internal/dto"
-	"github.com/victoryus84/gorders/server/internal/kafka"
-	"github.com/victoryus84/gorders/server/internal/models"
+	"github.com/victoryus84/gorders/internal/config"
+	"github.com/victoryus84/gorders/internal/dto"
+	"github.com/victoryus84/gorders/internal/kafka"
+	"github.com/victoryus84/gorders/internal/models"
 )
 
 // 1. INTERFAȚA (Contractul) - Verifică litera 's' în Repository!

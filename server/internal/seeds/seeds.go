@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/victoryus84/gorders/server/internal/models"
+	"github.com/victoryus84/gorders/internal/models"
 	"gorm.io/gorm"
 )
 

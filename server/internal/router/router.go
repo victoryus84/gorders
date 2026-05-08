@@ -2,8 +2,8 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/victoryus84/gorders/server/internal/handler"
-	"github.com/victoryus84/gorders/server/internal/middleware"
+	"github.com/victoryus84/gorders/internal/handler"
+	"github.com/victoryus84/gorders/internal/middleware"
 )
 
 // SetupRoutes configures all API routes

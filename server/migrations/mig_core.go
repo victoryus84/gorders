@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"github.com/victoryus84/gorders/server/internal/models"
+	"github.com/victoryus84/gorders/internal/models"
 )
 
 // GetAllModels returns all models that need to be migrated

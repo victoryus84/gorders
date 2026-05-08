@@ -19,7 +19,7 @@ COPY . .
 # Recomand să-i punem numele "server" ca să bată cu ce ai în docker-compose
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o /app/server/cmd/api ./cmd/api
+    go build -ldflags="-s -w" -o /app/server ./cmd/api
 
 # 2) Runtime stage
 FROM alpine:3.23 
@@ -31,7 +31,7 @@ WORKDIR /app
 
 # REPARAȚIA: Numele de la sursă trebuie să fie EXACT cel de la -o (mai sus)
 # Ambele trebuie să fie /app/server
-COPY --from=builder /app/server/cmd/api /app/server
+COPY --from=builder /app/server /app/server
 
 RUN adduser -D appuser
 USER appuser

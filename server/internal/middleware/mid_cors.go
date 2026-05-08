@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/victoryus84/gorders/server/internal/config"
+	"github.com/victoryus84/gorders/internal/config"
 )
 
 // CORS configures Cross-Origin Resource Sharing

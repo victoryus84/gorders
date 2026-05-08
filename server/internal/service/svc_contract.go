@@ -4,10 +4,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/victoryus84/gorders/server/internal/config"
-	"github.com/victoryus84/gorders/server/internal/dto"
-	"github.com/victoryus84/gorders/server/internal/kafka"
-	"github.com/victoryus84/gorders/server/internal/models"
+	"github.com/victoryus84/gorders/internal/config"
+	"github.com/victoryus84/gorders/internal/dto"
+	"github.com/victoryus84/gorders/internal/kafka"
+	"github.com/victoryus84/gorders/internal/models"
 )
 
 // ContractRepository - Ce așteptăm de la baza de date
