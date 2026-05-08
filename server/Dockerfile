@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 # Copiem restul fișierelor din server
-COPY server/ .
+COPY . .
 
 # Compilăm binarul. 
 # Recomand să-i punem numele "server" ca să bată cu ce ai în docker-compose
