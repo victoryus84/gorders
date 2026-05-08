@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/database"
 	"github.com/victoryus84/gorders/internal/handler"
@@ -25,9 +26,19 @@ var (
 )
 
 func main() {
+	_ = godotenv.Load() 
 	// Load configuration (singleton)
 	cfg := config.Load()
 
+	Version = cfg.Version
+    Commit  = cfg.Commit
+
+	if cfg.AppEnv == "production" {
+        fmt.Printf("⚠️ RUNNING IN PRODUCTION MODE (Version: %s, Commit: %s)\n", Version, Commit)
+    } else {
+        fmt.Printf("🛠️ Running in Development mode (Version: %s)\n", Version)
+    }
+	
 	// Pornim Producer-ul cu adresa din .env
 	kp := kafka.NewProducer(cfg.KafkaAddr)
 	defer kp.Close()

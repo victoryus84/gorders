@@ -25,6 +25,8 @@ type Config struct {
 
 	// App
 	AppEnv         string
+	Commit         string
+	Version        string
 	LogLevel       string
 	MaxRequestSize int // MB
 
@@ -77,6 +79,8 @@ func Load() *Config {
 
 			// App
 			AppEnv:         cleanEnv("APP_ENV", "development"),
+			Commit:         cleanEnv("GIT_COMMIT", "unknown"),
+			Version:        cleanEnv("VERSION", "1.0.0"),
 			LogLevel:       getEnv("LOG_LEVEL", "info"),
 			MaxRequestSize: getEnvInt("MAX_REQUEST_SIZE", 10),
 

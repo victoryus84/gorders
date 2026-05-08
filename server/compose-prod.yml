@@ -39,6 +39,10 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    environment:
+      - APP_ENV=${APP_ENV}
+      - VERSION=${VERSION}
+      - GIT_COMMIT=${GIT_COMMIT}
     command: ["/app/server"]
     networks:
       - app-network
