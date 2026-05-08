@@ -56,32 +56,38 @@ func Load() *Config {
 			fmt.Println("ℹ️ File .env not found, using system environment variables")
 		}
 
+		// Creăm un helper local pentru curățare
+        cleanEnv := func(key, fallback string) string {
+            val := getEnv(key, fallback)
+            return strings.TrimSpace(val) // Aici moare "huieta"
+        }
+		
 		cfg := &Config{
 			// Database
-			DBHost:     getEnv("DB_HOST", "localhost"),
-			DBPort:     getEnv("DB_PORT", "5432"),
-			DBUser:     getEnv("DB_USER", "postgres"),
-			DBPassword: getEnv("DB_PASSWORD", ""),
-			DBName:     getEnv("DB_NAME", "gorders"),
-			DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
+			DBHost:     cleanEnv("DB_HOST", "localhost"),
+			DBPort:     cleanEnv("DB_PORT", "5432"),
+			DBUser:     cleanEnv("DB_USER", "postgres"),
+			DBPassword: cleanEnv("DB_PASSWORD", ""),
+			DBName:     cleanEnv("DB_NAME", "gorders"),
+			DBSSLMode:  cleanEnv("DB_SSLMODE", "disable"),
 
 			// Auth
-			JWTSecret:   getEnv("JWT_SECRET", ""),
+			JWTSecret:   cleanEnv("JWT_SECRET", ""),
 			AllowSignup: getEnv("ALLOWSIGNUP", "false") == "true",
 
 			// App
-			AppEnv:         getEnv("APP_ENV", "development"),
+			AppEnv:         cleanEnv("APP_ENV", "development"),
 			LogLevel:       getEnv("LOG_LEVEL", "info"),
 			MaxRequestSize: getEnvInt("MAX_REQUEST_SIZE", 10),
 
 		 	// Kafka
-    		KafkaAddr:  	getEnv("KAFKA_BROKERS", ""),
-    		KafkaTopicPattern: getEnv("KAFKA_TOPIC_PATTERN", ""),
+    		KafkaAddr:  	cleanEnv("KAFKA_BROKERS", ""),
+    		KafkaTopicPattern: cleanEnv("KAFKA_TOPIC_PATTERN", ""),
 
 			// CORS
-			CORSAllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
-			CORSAllowedMethods: getEnv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,OPTIONS"),
-			CORSAllowedHeaders: getEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization"),
+			CORSAllowedOrigins: cleanEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
+			CORSAllowedMethods: cleanEnv("CORS_ALLOWED_METHODS", "GET,POST,PUT,DELETE,OPTIONS"),
+			CORSAllowedHeaders: cleanEnv("CORS_ALLOWED_HEADERS", "Content-Type,Authorization"),
 
 			// Rate Limiting
 			RateLimitRequests: getEnvInt("RATE_LIMIT_REQUESTS", 100),
