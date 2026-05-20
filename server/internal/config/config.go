@@ -139,49 +139,49 @@ func getEnvInt(key string, defaultVal int) int {
 }
 
 // parseInt converts string to int
-func parseInt(s string) (int, error) {
+func parseInt(str string) (int, error) {
 	var i int
-	_, err := fmt.Sscanf(s, "%d", &i)
+	_, err := fmt.Sscanf(str, "%d", &i)
 	return i, err
 }
 
 // Validate checks required configuration
-func (c *Config) Validate() error {
-	if c.DBHost == "" {
+func (cfg *Config) Validate() error {
+	if cfg.DBHost == "" {
 		return fmt.Errorf("DB_HOST is required")
 	}
-	if c.DBPort == "" {
+	if cfg.DBPort == "" {
 		return fmt.Errorf("DB_PORT is required")
 	}
-	if c.DBUser == "" {
+	if cfg.DBUser == "" {
 		return fmt.Errorf("DB_USER is required")
 	}
-	if c.DBName == "" {
+	if cfg.DBName == "" {
 		return fmt.Errorf("DB_NAME is required")
 	}
-	if c.JWTSecret == "" {
+	if cfg.JWTSecret == "" {
 		return fmt.Errorf("JWT_SECRET is required and must be at least 32 characters")
 	}
-	if len(c.JWTSecret) < 32 {
+	if len(cfg.JWTSecret) < 32 {
 		return fmt.Errorf("JWT_SECRET must be at least 32 characters for security")
 	}
-	if c.KafkaAddr == "" {
+	if cfg.KafkaAddr == "" {
         return fmt.Errorf("KAFKA_BROKERS is required")
     }
-	if c.KafkaTopicPattern == "" {
+	if cfg.KafkaTopicPattern == "" {
         return fmt.Errorf("KAFKA_TOPIC_PATTERN is missing in .env")
     }
     // Verificăm dacă ai pus %s în pattern
-    if !strings.Contains(c.KafkaTopicPattern, "%s") {
+    if !strings.Contains(cfg.KafkaTopicPattern, "%s") {
         return fmt.Errorf("KAFKA_TOPIC_PATTERN must contain '%%s' (e.g., gorders.%%s.events)")
     }
 	return nil
 }
 
-func (c *Config) GetTopic(domain string) string {
+func (cfg *Config) GetTopic(domain string) string {
     if domain == "" {
         // Aici poți să faci log.Fatal sau să returnezi un topic de tip "garbage/dead-letter"
         return "internal.unknown.events" 
     }
-    return fmt.Sprintf(c.KafkaTopicPattern, domain)
+    return fmt.Sprintf(cfg.KafkaTopicPattern, domain)
 }
