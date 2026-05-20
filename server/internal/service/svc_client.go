@@ -27,10 +27,10 @@ type ClientRepository interface {
 type ClientService interface {
 	ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult
 	ProcessClientGroupImport(requests []dto.ClientGroupDTO) dto.ImportResult
-	GetFirst1000Clients() ([]models.Client, error)
-	SearchClients(query string) ([]dto.ClientDTO, error)
-	FindClientByID(id uint) (*models.Client, error)
 	ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult
+	SvcGetFirst1000Clients() ([]models.Client, error)
+	SearchClients(query string) ([]dto.ClientDTO, error)
+	SearchClientByID(id uint) (*models.Client, error)
 }
 
 // 2. Facem structura PRIVATĂ (schimbăm 'C' mare în 'c' mic)
@@ -163,33 +163,6 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 	}
 }
 
-// SearchClients - Caută și mapează rezultatele în DTO-uri curate
-func (svc *clientService) SearchClients(query string) ([]dto.ClientDTO, error) {
-	dbClients, err := svc.rep.FindClientsByQuery(query)
-	if err != nil {
-		return nil, err
-	}
-
-	response := make([]dto.ClientDTO, len(dbClients))
-	for i, cl := range dbClients {
-		var emailStr string
-		if cl.Email != nil {
-			emailStr = *cl.Email
-		}
-		response[i] = dto.ClientDTO{
-			ID:            cl.ID,
-			ClientTypeID:  cl.ClientTypeID,
-			Name:          cl.Name,
-			FiscalID:      cl.FiscalID,
-			Email:         emailStr,
-			Phone:         cl.Phone,
-			FiscalAddress: cl.FiscalAddress,
-			PostalAddress: cl.PostalAddress,
-		}
-	}
-	return response, nil
-}
-
 // ProcessAddressImport - Importul de adrese
 func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult {
 	createdCount := 0
@@ -230,10 +203,41 @@ func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, 
 	}
 }
 
-// Metodele standard (Passthrough către repo)
-func (svc *clientService) GetFirst1000Clients() ([]models.Client, error) { return svc.rep.GetFirst1000Clients() }
+// SearchClients - Caută și mapează rezultatele în DTO-uri curate
+func (svc *clientService) SearchClients(query string) ([]dto.ClientDTO, error) {
+	dbClients, err := svc.rep.FindClientsByQuery(query)
+	if err != nil {
+		return nil, err
+	}
 
-func (svc *clientService) FindClientByID(id uint) (*models.Client, error) { return svc.rep.FindClientByID(id) }
+	response := make([]dto.ClientDTO, len(dbClients))
+	for i, cl := range dbClients {
+		var emailStr string
+		if cl.Email != nil {
+			emailStr = *cl.Email
+		}
+		response[i] = dto.ClientDTO{
+			ID:            cl.ID,
+			ClientTypeID:  cl.ClientTypeID,
+			Name:          cl.Name,
+			FiscalID:      cl.FiscalID,
+			Email:         emailStr,
+			Phone:         cl.Phone,
+			FiscalAddress: cl.FiscalAddress,
+			PostalAddress: cl.PostalAddress,
+		}
+	}
+	return response, nil
+}
+
+// Metodele standard (Passthrough către repo)
+func (svc *clientService) SvcGetFirst1000Clients() ([]models.Client, error) { 
+	return svc.rep.GetFirst1000Clients() 
+}
+
+func (svc *clientService) SearchClientByID(id uint) (*models.Client, error) { 
+	return svc.rep.FindClientByID(id) 
+}
 
 // --- Helpers Private ---
 

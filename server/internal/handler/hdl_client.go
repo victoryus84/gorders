@@ -51,7 +51,7 @@ func (hdl *ClientHandler) CreateClientGroup(ctx *gin.Context) {
 
 // GetClients - Obține primii 1000 de clienți
 func (hdl *ClientHandler) GetClients(ctx *gin.Context) {
-	clients, err := hdl.svc.GetFirst1000Clients()
+	clients, err := hdl.svc.SvcGetFirst1000Clients()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -87,7 +87,7 @@ func (hdl *ClientHandler) GetClientByID(ctx *gin.Context) {
 		return
 	}
 
-	client, err := hdl.svc.FindClientByID(uint(id))
+	client, err := hdl.svc.SearchClientByID(uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "Clientul nu a fost găsit"})
 		return
