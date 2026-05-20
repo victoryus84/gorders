@@ -29,7 +29,7 @@ type ClientGroup struct {
 	UUIDModel   `gorm:"embedded"`
 	Name        string    `gorm:"type:varchar(100);not null;unique"` // Numele grupei (ex: "Băuturi", "Electronice")
 	Description string    `gorm:"type:text"`                         // Descrierea grupei
-	Clients    []Client   `gorm:"foreignKey:ClientGroupID"`            // O grupă are mai mulți clienți
+	Clients    []Client   `gorm:"foreignKey:ClientGroupID"`          // O grupă are mai mulți clienți
 }
 // ********** ClientAddress - Adresă asociată clientului **********
 type ClientAddress struct {

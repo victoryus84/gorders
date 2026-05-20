@@ -11,6 +11,12 @@ type ClientDTO struct {
 	PostalAddress string `json:"postal_address" xml:"postal_address"`
 }
 
+type ClientGroupDTO struct {
+	ID          uint   `json:"id,omitempty" xml:"id,omitempty"`
+	Name        string `json:"name" xml:"name" binding:"required"`
+	Description string `json:"description,omitempty" xml:"description,omitempty"`
+}
+
 type ClientAddressDTO struct {
 	ID       uint   `json:"id,omitempty" xml:"id,omitempty"`
 	FiscalID string `json:"fiscal_id" xml:"fiscal_id" binding:"required"`

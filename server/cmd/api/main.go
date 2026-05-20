@@ -54,12 +54,12 @@ func main() {
 	db := database.Connect(cfg)
 
 	// Create repository
-	repo := repository.NewRepository(db)
+	rep := repository.NewRepository(db)
 
 	// Create services
-	svc_user := service.NewUserService(repo, cfg)
-	svc_client := service.NewClientService(repo, cfg, kp)
-	svc_contract := service.NewContractService(repo, cfg, kp)
+	svc_user := service.NewUserService(rep, cfg)
+	svc_client := service.NewClientService(rep, cfg, kp)
+	svc_contract := service.NewContractService(rep, cfg, kp)
 
 	logger.LogInfo("✅ All services initialized")
 

@@ -14,16 +14,19 @@ import (
 // 1. INTERFAȚA (Contractul) - Verifică litera 's' în Repository!
 type ClientRepository interface {
 	CreateClient(client *models.Client) error
+	CreateClientGroup(group *models.ClientGroup) error
+	CreateClientAddress(addr *models.ClientAddress) error
 	FindClientByFiscalID(fiscalID string) (*models.Client, error)
 	GetFirst1000Clients() ([]models.Client, error)
 	FindClientsByQuery(query string) ([]models.Client, error)
 	FindClientByID(id uint) (*models.Client, error)
-	CreateClientAddress(addr *models.ClientAddress) error
+	FindClientGroupByName(name string) (*models.ClientGroup, error)
 }
 
 // Aici pui toate metodele pe care vrei să le folosească Handler-ul
 type ClientService interface {
 	ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult
+	ProcessClientGroupImport(requests []dto.ClientGroupDTO) dto.ImportResult
 	GetFirst1000Clients() ([]models.Client, error)
 	SearchClients(query string) ([]dto.ClientDTO, error)
 	FindClientByID(id uint) (*models.Client, error)
@@ -32,20 +35,20 @@ type ClientService interface {
 
 // 2. Facem structura PRIVATĂ (schimbăm 'C' mare în 'c' mic)
 type clientService struct {
-	repo ClientRepository
+	rep ClientRepository
 	cfg *config.Config
-	kafka *kafka.Producer
+	kfk *kafka.Producer
 }
 
-func NewClientService(repo ClientRepository, cfg *config.Config, kp *kafka.Producer) ClientService {
-	return &clientService{repo: repo, cfg: cfg, kafka: kp}
+func NewClientService(rep ClientRepository, cfg *config.Config, kfk *kafka.Producer) ClientService {
+	return &clientService{rep: rep, cfg: cfg, kfk: kfk}
 }
 
 // ProcessClientImport - Logica masivă de import pe care am scos-o din Handler
-func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult {
+func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult {
 	created := make([]*models.Client, 0)
 	skipped := make([]map[string]string, 0)
-    topic := s.cfg.GetTopic("clients")
+    topic := svc.cfg.GetTopic("clients")
 
 	for _, req := range requests {
 		// A. Validare de bază (Logica ta din API-ul vechi)
@@ -55,14 +58,14 @@ func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Import
 		}
 
 		// B. Verificare duplicate
-		existing, err := s.repo.FindClientByFiscalID(req.FiscalID)
+		existing, err := svc.rep.FindClientByFiscalID(req.FiscalID)
 		if err == nil && existing != nil {
 			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "duplicate"})
 			continue
 		}
 
 		// C. Sanitizarea email-ului (Logica ta deșteaptă)
-		emailPtr := s.sanitizeEmail(req.Email)
+		emailPtr := svc.sanitizeEmail(req.Email)
 
 		// D. Mapare DTO -> Model
 		client := &models.Client{
@@ -76,21 +79,21 @@ func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Import
 		}
 
 		// E. Salvare
-		if err := s.repo.CreateClient(client); err != nil {
+		if err := svc.rep.CreateClient(client); err != nil {
 			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": err.Error()})
 			continue
 		}
 
 		// F. KAFKA 
         // Folosim gorutină pentru a nu încetini importul
-        go func(c *models.Client) {
-			payload, _ := json.Marshal(c)
+        go func(mod_client *models.Client) {
+			payload, _ := json.Marshal(mod_client)
 
 			// Publish-ul tău universal
-			_ = s.kafka.Publish(context.Background(), topic, c.FiscalID, payload)
+			_ = svc.kfk.Publish(context.Background(), topic, mod_client.FiscalID, payload)
 
 			// Notă: Dacă ai un logger (ex: zap, logrus), aici ar trebui să fie:
-			// s.logger.Error("kafka publish failed", "client", c.FiscalID, "err", err)
+			// svc.logger.Error("kafka publish failed", "client", mod_client.FiscalID, "err", err)
         }(client)
 
 		created = append(created, client)
@@ -100,14 +103,69 @@ func (s *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Import
 		Status:        "success",
 		TotalCreated:  len(created),
 		TotalSkipped:  len(skipped),
-		ErrorsPreview: s.limitErrors(skipped, 20),
+		ErrorsPreview: svc.limitErrors(skipped, 20),
+		Message:       "Import finalizat",
+	}
+}
+
+func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO) dto.ImportResult {
+	created := make([]*models.ClientGroup, 0)
+	skipped := make([]map[string]string, 0)
+    topic := svc.cfg.GetTopic("client_groups")
+	
+	for _, req := range requests {
+		// A. Validare de bază (Logica ta din API-ul vechi)
+		if strings.TrimSpace(req.Name) == ""  {
+			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
+			continue
+		}
+
+		// B. Verificare duplicate
+		existing, err := svc.rep.FindClientGroupByName(req.Name)
+		if err == nil && existing != nil {
+			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
+			continue
+		}
+
+		// D. Mapare DTO -> Model
+		clientgroup := &models.ClientGroup{
+			Name:          req.Name,
+			Description:   req.Description,
+		}
+
+		// E. Salvare
+		if err := svc.rep.CreateClientGroup(clientgroup); err != nil {
+			skipped = append(skipped, map[string]string{"name": req.Name, "reason": err.Error()})
+			continue
+		}
+
+		// F. KAFKA 
+        // Folosim gorutină pentru a nu încetini importul
+        go func(mod *models.ClientGroup) {
+			payload, _ := json.Marshal(mod)
+
+			// Publish-ul tău universal
+			_ = svc.kfk.Publish(context.Background(), topic, mod.Name, payload)
+
+			// Notă: Dacă ai un logger (ex: zap, logrus), aici ar trebui să fie:
+			// svc.logger.Error("kafka publish failed", "client", mod.FiscalID, "err", err)
+        }(clientgroup)
+
+		created = append(created, clientgroup)
+	}
+
+	return dto.ImportResult{
+		Status:        "success",
+		TotalCreated:  len(created),
+		TotalSkipped:  len(skipped),
+		ErrorsPreview: svc.limitErrors(skipped, 20),
 		Message:       "Import finalizat",
 	}
 }
 
 // SearchClients - Caută și mapează rezultatele în DTO-uri curate
-func (s *clientService) SearchClients(query string) ([]dto.ClientDTO, error) {
-	dbClients, err := s.repo.FindClientsByQuery(query)
+func (svc *clientService) SearchClients(query string) ([]dto.ClientDTO, error) {
+	dbClients, err := svc.rep.FindClientsByQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +191,7 @@ func (s *clientService) SearchClients(query string) ([]dto.ClientDTO, error) {
 }
 
 // ProcessAddressImport - Importul de adrese
-func (s *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult {
+func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult {
 	createdCount := 0
 	skipped := make([]map[string]string, 0)
 
@@ -143,7 +201,7 @@ func (s *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ow
 			continue
 		}
 
-		client, err := s.repo.FindClientByFiscalID(req.FiscalID)
+		client, err := svc.rep.FindClientByFiscalID(req.FiscalID)
 		if err != nil {
 			skipped = append(skipped, map[string]string{"address": req.Address, "reason": "client_not_found"})
 			continue
@@ -157,7 +215,7 @@ func (s *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ow
 			OwnerID:  ownerID,
 		}
 
-		if err := s.repo.CreateClientAddress(addr); err != nil {
+		if err := svc.rep.CreateClientAddress(addr); err != nil {
 			skipped = append(skipped, map[string]string{"address": req.Address, "reason": err.Error()})
 			continue
 		}
@@ -168,18 +226,18 @@ func (s *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ow
 		Status:        "success",
 		TotalCreated:  createdCount,
 		TotalSkipped:  len(skipped),
-		ErrorsPreview: s.limitErrors(skipped, 20),
+		ErrorsPreview: svc.limitErrors(skipped, 20),
 	}
 }
 
 // Metodele standard (Passthrough către repo)
-func (s *clientService) GetFirst1000Clients() ([]models.Client, error) { return s.repo.GetFirst1000Clients() }
+func (svc *clientService) GetFirst1000Clients() ([]models.Client, error) { return svc.rep.GetFirst1000Clients() }
 
-func (s *clientService) FindClientByID(id uint) (*models.Client, error) { return s.repo.FindClientByID(id) }
+func (svc *clientService) FindClientByID(id uint) (*models.Client, error) { return svc.rep.FindClientByID(id) }
 
 // --- Helpers Private ---
 
-func (s *clientService) sanitizeEmail(email string) *string {
+func (svc *clientService) sanitizeEmail(email string) *string {
 	raw := strings.TrimSpace(email)
 	low := strings.ToLower(raw)
 	if low == "" || low == "not inserted" || low == "n/a" || low == "none" {
@@ -188,7 +246,7 @@ func (s *clientService) sanitizeEmail(email string) *string {
 	return &raw
 }
 
-func (s *clientService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+func (svc *clientService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
 	if len(skipped) > limit {
 		return skipped[:limit]
 	}

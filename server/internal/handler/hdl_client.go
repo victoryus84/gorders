@@ -19,11 +19,11 @@ func NewClientHandler(svc service.ClientService) *ClientHandler {
 }
 
 // CreateClient - Handler pentru import masiv de clienți (1C style)
-func (h *ClientHandler) CreateClient(c *gin.Context) {
+func (h *ClientHandler) CreateClient(ctx *gin.Context) {
 	// 1. Parsăm body-ul (JSON/XML/Array) folosind utilitarul tău deștept
-	requests, err := utils.ParseBody[dto.ClientDTO](c)
+	requests, err := utils.ParseBody[dto.ClientDTO](ctx)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid: " + err.Error()})
 		return
 	}
 
@@ -31,58 +31,73 @@ func (h *ClientHandler) CreateClient(c *gin.Context) {
 	result := h.svc.ProcessClientImport(requests)
 
 	// 3. Răspunsul final
-	c.JSON(http.StatusCreated, result)
+	ctx.JSON(http.StatusCreated, result)
 }
 
-// GetClients - Obține primii 1000 de clienți
-func (h *ClientHandler) GetClients(c *gin.Context) {
-	clients, err := h.svc.GetFirst1000Clients()
+func (hdl *ClientHandler) CreateClientGroup(ctx *gin.Context) {
+	// 1. Parsăm body-ul (JSON/XML/Array) folosind utilitarul tău deștept
+	requests, err := utils.ParseBody[dto.ClientGroupDTO](ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, clients)
+	// 2. Trimitem tot calupul la Service (Bucătarul se ocupă de validări și duplicate)
+	result := hdl.svc.ProcessClientGroupImport(requests)
+
+	// 3. Răspunsul final
+	ctx.JSON(http.StatusCreated, result)
+}
+
+// GetClients - Obține primii 1000 de clienți
+func (hdl *ClientHandler) GetClients(ctx *gin.Context) {
+	clients, err := hdl.svc.GetFirst1000Clients()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, clients)
 }
 
 // SearchClients - Căutare clienți după query (q=...)
-func (h *ClientHandler) SearchClients(c *gin.Context) {
-	query := c.Query("q")
+func (hdl *ClientHandler) SearchClients(ctx *gin.Context) {
+	query := ctx.Query("q")
 	if query == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "The parameter 'q' is required"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "The parameter 'q' is required"})
 		return
 	}
 
 	// Serviciul ne întoarce direct DTO-urile pregătite pentru export (cu email string, nu pointer)
-	response, err := h.svc.SearchClients(query)
+	response, err := hdl.svc.SearchClients(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	ctx.JSON(http.StatusOK, response)
 }
 
 // GetClientByID - Obținerea unui singur client
-func (h *ClientHandler) GetClientByID(c *gin.Context) {
-	idStr := c.Param("id")
+func (hdl *ClientHandler) GetClientByID(ctx *gin.Context) {
+	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 
-	client, err := h.svc.FindClientByID(uint(id))
+	client, err := hdl.svc.FindClientByID(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Clientul nu a fost găsit"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Clientul nu a fost găsit"})
 		return
 	}
 
-	c.JSON(http.StatusOK, client)
+	ctx.JSON(http.StatusOK, client)
 }
 
 // CreateClientAddress - Import masiv de adrese pentru clienți
-func (h *ClientHandler) CreateClientAddress(c *gin.Context) {
+func (hdl *ClientHandler) CreateClientAddress(c *gin.Context) {
 	requests, err := utils.ParseBody[dto.ClientAddressDTO](c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid"})
@@ -97,7 +112,7 @@ func (h *ClientHandler) CreateClientAddress(c *gin.Context) {
 	}
 
 	// Trimitem la service adresele și cine e proprietarul lor
-	result := h.svc.ProcessAddressImport(requests, userID.(uint))
+	result := hdl.svc.ProcessAddressImport(requests, userID.(uint))
 
 	c.JSON(http.StatusCreated, result)
 }

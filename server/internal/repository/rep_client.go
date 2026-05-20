@@ -7,7 +7,7 @@ import (
 )
 
 // Client methods
-func (repository *Repository) CreateClient(client *models.Client) error {
+func (rep *Repository) CreateClient(client *models.Client) error {
     if client.Email != nil {
         em := strings.TrimSpace(*client.Email)
         el := strings.ToLower(em)
@@ -18,19 +18,35 @@ func (repository *Repository) CreateClient(client *models.Client) error {
         }
     }
 
-    return repository.db.Create(client).Error
+    return rep.db.Create(client).Error
 }
-func (repository *Repository) GetFirst1000Clients() ([]models.Client, error) {
+
+func (rep *Repository) CreateClientGroup(group *models.ClientGroup) error {
+    return rep.db.Create(group).Error
+}
+
+func (rep *Repository) CreateClientAddress(addr *models.ClientAddress) error {
+	return rep.db.Create(addr).Error
+}
+
+func (rep *Repository) FindClientByFiscalID(fiscalID string) (*models.Client, error) {
+	var client models.Client
+	err := rep.db.Where("fiscal_id = ?", fiscalID).First(&client).Error
+	return &client, err
+}
+
+func (rep *Repository) GetFirst1000Clients() ([]models.Client, error) {
 	var clients []models.Client
-	err := repository.db.Preload("ClientType").Limit(1000).Find(&clients).Error
+	err := rep.db.Preload("ClientType").Limit(1000).Find(&clients).Error
 	return clients, err
 }
-func (repository *Repository) FindClientsByQuery(query string) ([]models.Client, error) {
+
+func (rep *Repository) FindClientsByQuery(query string) ([]models.Client, error) {
 	if len(query) < 3 {
 		return []models.Client{}, nil // Return empty if less than 3 chars
 	}
 	var clients []models.Client
-	err := repository.db.
+	err := rep.db.
 		Where("name ILIKE ? OR email ILIKE ? OR fiscal_id ILIKE ? OR phone ILIKE ?",
         "%"+query+"%",
         "%"+query+"%",
@@ -40,10 +56,11 @@ func (repository *Repository) FindClientsByQuery(query string) ([]models.Client,
     Find(&clients).Error
 	return clients, err
 }
-func (repository *Repository) FindClientByID(id uint) (*models.Client, error) {
+
+func (rep *Repository) FindClientByID(id uint) (*models.Client, error) {
 	var client models.Client
 	// Încercăm să găsim clientul și să încărcăm și tipul lui (Preload)
-    err := repository.db.Preload("ClientType").First(&client, id).Error
+    err := rep.db.Preload("ClientType").First(&client, id).Error
     
     // 1. Dacă a apărut o eroare (nu există în DB sau e picat serverul)
     if err != nil {
@@ -53,14 +70,16 @@ func (repository *Repository) FindClientByID(id uint) (*models.Client, error) {
     // 2. Dacă totul e ok, returnăm adresa obiectului plin
     return &client, nil
 }
-func (repository *Repository) FindClientByFiscalID(fiscalID string) (*models.Client, error) {
-	var client models.Client
-	err := repository.db.Where("fiscal_id = ?", fiscalID).First(&client).Error
-	return &client, err
+
+func (rep *Repository) FindClientGroupByName(name string) (*models.ClientGroup, error) {
+    var group models.ClientGroup
+    err := rep.db.Where("name = ?", name).First(&group).Error
+    return &group, err
 }
-func (repository *Repository) CreateClientAddress(addr *models.ClientAddress) error {
-	return repository.db.Create(addr).Error
-}
+
+
+
+
 
 
 
