@@ -61,6 +61,14 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 	skipped := make([]map[string]string, 0)
 	topic := svc.cfg.GetTopic("clients")
 
+	// Extragem toate grupele din baza de date pentru a le avea la îndemână
+	groupMap := make(map[string]uint)
+	if existingGroups, err := svc.rep.GetAllClientGroups(); err == nil {
+    	for _, g := range existingGroups {
+        groupMap[g.Code] = g.ID
+    	}
+	}
+
 	for _, req := range requests {
 		// A. Validare de bază (Logica ta din API-ul vechi)
 		if req.ClientTypeID == 0 || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.FiscalID) == "" {
@@ -75,9 +83,9 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 			continue
 		}
 
-		// C. Sanitizarea email-ului (Logica ta deșteaptă)
+		// C. Sanitizarea cimpurilor (ex: email) și maparea codului grupei în ID-ul real din DB
 		emailPtr := svc.sanitizeEmail(req.Email)
-		dbGroupID := svc.resolveGroupIDFromMap(req.GroupCode, nil) 
+		dbGroupID := svc.resolveGroupIDFromMap(req.GroupCode, groupMap) 
 
 		// D. Mapare DTO -> Model
 		client := &models.Client{
