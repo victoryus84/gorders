@@ -34,7 +34,7 @@ func (rep *Repository) UpsertClient(client *models.Client) error {
     }
 
     // 2. Aplicăm regula și executăm comanda de Salvare/Creare
-    rezultat := rep.db.Debug().Clauses(regulaConflict).Create(client)
+    rezultat := rep.db.Clauses(regulaConflict).Create(client)
 
     // 3. Verificăm eroarea în stilul clasic
     if rezultat.Error != nil {

@@ -14,7 +14,7 @@ import (
 func Connect(cfg *config.Config) *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info), // Pentru debug: arată toate query-urile SQL
+		Logger: logger.Default.LogMode(logger.Error), // Pentru debug: arată toate query-urile SQL
 	})
 	if err != nil {
 		// În main e ok să folosim log.Fatal dacă baza e critică pentru aplicație
