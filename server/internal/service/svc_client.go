@@ -89,6 +89,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 
 		// D. Mapare DTO -> Model
 		client := &models.Client{
+			Code:          req.Code,
 			ClientTypeID:  req.ClientTypeID,
 			Name:          req.Name,
 			FiscalID:      req.FiscalID,

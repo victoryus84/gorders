@@ -8,7 +8,7 @@ import (
 type Client struct {
 	gorm.Model
 	UUIDModel     `gorm:"embedded"`
-	ClientGroupID *uint            `gorm:"column:client_group_id"`                         // Foreign key to ClientGroup
+	ClientGroupID *uint           `gorm:"column:client_group_id"`           // Foreign key to ClientGroup
 	ClientTypeID  uint            `gorm:"not null"`                         // Foreign key to ClientType
 	Code    	  string          `gorm:"type:varchar(15);unique;not null"` // Codul clientului (unic)
 	Name          string          `gorm:"type:varchar(100);not null"`       // Numele clientului
