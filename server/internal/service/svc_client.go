@@ -78,12 +78,12 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 			continue
 		}
 
-		// B. Verificare duplicate
-		existing, err := svc.rep.FindClientByCode(req.Code)
-		if err == nil && existing != nil {
-			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "duplicate"})
-			continue
-		}
+		// B. Verificare duplicate () - Acum folosim metoda de repo care face direct UPSET (Create sau Update dacă există)
+		// existing, err := svc.rep.FindClientByCode(req.Code)
+		// if err == nil && existing != nil {
+		// 	skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "duplicate"})
+		// 	continue
+		// }
 
 		// C. Sanitizarea cimpurilor (ex: email) și maparea codului grupei în ID-ul real din DB
 		emailPtr := svc.sanitizeEmail(req.Email)
