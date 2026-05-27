@@ -7,12 +7,15 @@ import (
 	"github.com/victoryus84/gorders/internal/seeds"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // Connect inițializează conexiunea la baza de date
 func Connect(cfg *config.Config) *gorm.DB {
 
-	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info), // Pentru debug: arată toate query-urile SQL
+	})
 	if err != nil {
 		// În main e ok să folosim log.Fatal dacă baza e critică pentru aplicație
 		log.Fatal("❌ failed to connect database:", err)
