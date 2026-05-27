@@ -29,6 +29,12 @@ func (rep *Repository) CreateClientAddress(addr *models.ClientAddress) error {
 	return rep.db.Create(addr).Error
 }
 
+func (rep *Repository) FindClientByCode(code string) (*models.Client, error) {
+	var client models.Client
+	err := rep.db.Where("code = ?", code).First(&client).Error
+	return &client, err
+}
+
 func (rep *Repository) FindClientByFiscalID(fiscalID string) (*models.Client, error) {
 	var client models.Client
 	err := rep.db.Where("fiscal_id = ?", fiscalID).First(&client).Error

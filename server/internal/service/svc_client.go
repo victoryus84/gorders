@@ -15,6 +15,7 @@ import (
 type ClientRepository interface {
 	// Client methods
 	CreateClient(client *models.Client) error
+	FindClientByCode(code string) (*models.Client, error)
 	FindClientByFiscalID(fiscalID string) (*models.Client, error)
 	GetFirst1000Clients() ([]models.Client, error)
 	FindClientsByQuery(query string) ([]models.Client, error)
@@ -77,7 +78,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 		}
 
 		// B. Verificare duplicate
-		existing, err := svc.rep.FindClientByFiscalID(req.FiscalID)
+		existing, err := svc.rep.FindClientByCode(req.Code)
 		if err == nil && existing != nil {
 			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "duplicate"})
 			continue
