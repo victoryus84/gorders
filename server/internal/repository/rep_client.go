@@ -73,10 +73,32 @@ func (rep *Repository) FindClientByID(id uint) (*models.Client, error) {
 
 func (rep *Repository) FindClientGroupByName(name string) (*models.ClientGroup, error) {
     var group models.ClientGroup
-    err := rep.db.Where("name = ?", name).First(&group).Error
-    return &group, err
+    result := rep.db.Where("name = ?", name).First(&group)
+    
+    if result.Error != nil {
+        return nil, result.Error
+    }
+    return &group, nil
 }
 
+func (rep *Repository) FindClientGroupByCode(code string) (*models.ClientGroup, error) {
+    var group models.ClientGroup
+    result := rep.db.Where("code = ?", code).First(&group)
+    
+    if result.Error != nil {
+        return nil, result.Error
+    }
+    return &group, nil
+}
+
+func (rep *Repository) GetAllClientGroups() ([]models.ClientGroup, error) {
+    var groups []models.ClientGroup
+    if err := rep.db.Find(&groups).Error; err != nil {
+        return nil, err
+    }
+    
+    return groups, nil
+}
 
 
 
