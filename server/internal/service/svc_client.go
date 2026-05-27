@@ -126,46 +126,61 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 	skipped := make([]map[string]string, 0)
 	topic := svc.cfg.GetTopic("client_groups")
 
-	for _, req := range requests {
-		// A. Validare de bază (Logica ta din API-ul vechi)
-		if strings.TrimSpace(req.Name) == "" {
-			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
-			continue
-		}
+	// 1. INIȚIALIZAREA: Încărcăm grupele existente o singură dată
+    groupMap := make(map[string]uint)
+    if existingGroups, err := svc.rep.GetAllClientGroups(); err == nil {
+        for _, g := range existingGroups {
+            groupMap[g.Code] = g.ID
+        }
+    }
 
-		// B. Verificare duplicate
-		existing, err := svc.rep.FindClientGroupByCode(req.Code)
-		if err == nil && existing != nil {
-			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
-			continue
-		}
+    for _, req := range requests {
+        // A. Validare de bază
+        if strings.TrimSpace(req.Name) == "" {
+            skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
+            continue
+        }
 
-		// D. Mapare DTO -> Model
-		clientgroup := &models.ClientGroup{
-			Name:        req.Name,
-			Description: req.Description,
-		}
+        // B. Verificare duplicate
+        existing, err := svc.rep.FindClientGroupByCode(req.Code)
+        if err == nil && existing != nil {
+            skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
+            continue
+        }
 
-		// E. Salvare
-		if err := svc.rep.CreateClientGroup(clientgroup); err != nil {
-			skipped = append(skipped, map[string]string{"name": req.Name, "reason": err.Error()})
-			continue
-		}
+        // C. MAPAREA IERARHIEI - Căutăm în dicționar dacă avem codul părintelui și luăm ID-ul lui
+        var parentIDPtr *uint
+        if cleanCode := strings.TrimSpace(req.ParentCode); cleanCode != "" && cleanCode != "not inserted" {
+            if id, exists := groupMap[cleanCode]; exists {
+                parentIDPtr = &id
+            }
+        }
 
-		// F. KAFKA
-		// Folosim gorutină pentru a nu încetini importul
-		go func(mod *models.ClientGroup) {
-			payload, _ := json.Marshal(mod)
+        // D. Mapare DTO -> Model
+        clientgroup := &models.ClientGroup{
+            Code:        req.Code,
+            Name:        req.Name,
+            Description: req.Description,
+            ParentID:    parentIDPtr, // Acum ia adresa reală sau rămâne nil
+        }
 
-			// Publish-ul tău universal
-			_ = svc.kfk.Publish(context.Background(), topic, mod.Name, payload)
+        // E. Salvare
+        if err := svc.rep.CreateClientGroup(clientgroup); err != nil {
+            skipped = append(skipped, map[string]string{"name": req.Name, "reason": err.Error()})
+            continue
+        }
 
-			// Notă: Dacă ai un logger (ex: zap, logrus), aici ar trebui să fie:
-			// svc.logger.Error("kafka publish failed", "client", mod.FiscalID, "err", err)
-		}(clientgroup)
+        // F. ACTUALIZAREA: Scriem grupa abia salvată în dicționar pentru viitorii ei copii!
+        groupMap[clientgroup.Code] = clientgroup.ID
 
-		created = append(created, clientgroup)
-	}
+        // G. KAFKA
+        go func(mod *models.ClientGroup) {
+            payload, _ := json.Marshal(mod)
+            _ = svc.kfk.Publish(context.Background(), topic, mod.Name, payload)
+        }(clientgroup)
+
+        created = append(created, clientgroup)
+    }
 
 	return dto.ImportResult{
 		Status:        "success",
