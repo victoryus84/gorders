@@ -15,6 +15,7 @@ import (
 type ClientRepository interface {
 	// Client methods
 	CreateClient(client *models.Client) error
+	UpsertClient(client *models.Client) error
 	FindClientByCode(code string) (*models.Client, error)
 	FindClientByFiscalID(fiscalID string) (*models.Client, error)
 	GetFirst1000Clients() ([]models.Client, error)
@@ -101,11 +102,11 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 			ClientGroupID: dbGroupID,
 		}
 
-		// E. Salvare
-		if err := svc.rep.CreateClient(client); err != nil {
-			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": err.Error()})
-			continue
-		}
+		// E. Create / Upsert
+		if err := svc.rep.UpsertClient(client); err != nil {
+            skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
+            continue
+        }
 
 		// F. KAFKA
 		// Folosim gorutină pentru a nu încetini importul

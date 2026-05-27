@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/victoryus84/gorders/internal/models"
+    "gorm.io/gorm/clause"
 )
 
 // Client methods
@@ -19,6 +20,29 @@ func (rep *Repository) CreateClient(client *models.Client) error {
     }
 
     return rep.db.Create(client).Error
+}
+
+// UpsertClient face Insert, sau Update dacă dă de un duplicat pe coloana 'code'
+func (rep *Repository) UpsertClient(client *models.Client) error {
+   // 1. Definim separat regula: "Ce facem dacă găsim un duplicat?"
+    regulaConflict := clause.OnConflict{
+        Columns: []clause.Column{{Name: "code"}}, // Cheia unică după care căutăm
+        DoUpdates: clause.AssignmentColumns([]string{
+            "name", "client_type_id", "fiscal_id", "email", "phone", 
+            "fiscal_address", "postal_address", "client_group_id",
+        }), // Câmpurile pe care le actualizăm
+    }
+
+    // 2. Aplicăm regula și executăm comanda de Salvare/Creare
+    rezultat := rep.db.Clauses(regulaConflict).Create(client)
+
+    // 3. Verificăm eroarea în stilul clasic
+    if rezultat.Error != nil {
+        return rezultat.Error
+    }
+
+    // 4. Totul a decurs perfect
+    return nil
 }
 
 func (rep *Repository) CreateClientGroup(group *models.ClientGroup) error {
