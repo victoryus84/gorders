@@ -6,7 +6,7 @@ type ContractDTO struct {
 	Date     string  `json:"date" xml:"date"` // Format YYYY-MM-DD
 	Amount   float64 `json:"amount" xml:"amount"`
 	Status   string  `json:"status" xml:"status"`
-	FiscalID string  `json:"fiscal_id" xml:"fiscal_id" binding:"required"` // Pentru că 1C trimite Codul Fiscal, nu ID-ul de Client din Postgres
+	Code	 string  `json:"code" xml:"code" binding:"required"` // client code
 }
 
 type ContractAddressDTO struct {

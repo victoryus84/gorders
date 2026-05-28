@@ -14,41 +14,41 @@ import (
 type ContractRepository interface {
     CreateContract(contract *models.Contract) error
     FindContractsByClientID(clientID uint) ([]models.Contract, error)
-    FindClientByFiscalID(fiscalID string) (*models.Client, error)
+    FindClientByCode(code string) (*models.Client, error)
 	FindContractByID(id uint) (*models.Contract, error)
 }
 // ContractService - Ce oferim Handler-ului (GOrders API)
 type ContractService interface {
-	SyncContracts(requests []dto.ContractDTO, ownerID uint) dto.ImportResult
+	ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult
 	GetContractDetails(id uint) (*dto.ContractDTO, error) // Am aliniat numele cu Handler-ul
 	GetContractsByClient(clientID uint) ([]dto.ContractDTO, error)
 }
 
 type contractService struct {
-	repo ContractRepository
+	rep ContractRepository
 }
 
-func NewContractService(repo ContractRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
-	return &contractService{repo: repo}
+func NewContractService(rep ContractRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
+	return &contractService{rep: rep}
 }
 
 // --- LOGICA DE BUSINESS (SYNC) ---
 
-func (svc *contractService) SyncContracts(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
+func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
 	createdCount := 0
 	skipped := make([]map[string]string, 0)
 
 	for _, req := range requests {
 		// 1. Validare rapidă
-		if strings.TrimSpace(req.FiscalID) == "" {
-			skipped = append(skipped, svc.logSkip(req.Name, "FiscalID lipsă"))
+		if strings.TrimSpace(req.Code) == "" {
+			skipped = append(skipped, svc.logSkip(req.Name, "Code lipsă"))
 			continue
 		}
 
 		// 2. Găsire client
-		client, err := svc.repo.FindClientByFiscalID(req.FiscalID)
+		client, err := svc.rep.FindClientByCode(req.Code)
 		if err != nil {
-			skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.FiscalID))
+			skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.Code))
 			continue
 		}
 
@@ -56,7 +56,7 @@ func (svc *contractService) SyncContracts(requests []dto.ContractDTO, ownerID ui
 		contract := svc.mapDTOToModel(req, client.ID, ownerID)
 
 		// 4. Salvare
-		if err := svc.repo.CreateContract(contract); err != nil {
+		if err := svc.rep.CreateContract(contract); err != nil {
 			skipped = append(skipped, svc.logSkip(req.Number, "Eroare DB: "+err.Error()))
 			continue
 		}
@@ -75,7 +75,7 @@ func (svc *contractService) SyncContracts(requests []dto.ContractDTO, ownerID ui
 // --- IMPLEMENTARE METODE LIPSĂ (Pentru a repara erorile de compilare) ---
 
 func (svc *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error) {
-	contract, err := svc.repo.FindContractByID(id)
+	contract, err := svc.rep.FindContractByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (svc *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error
 }
 
 func (svc *contractService) GetContractsByClient(clientID uint) ([]dto.ContractDTO, error) {
-	contracts, err := svc.repo.FindContractsByClientID(clientID)
+	contracts, err := svc.rep.FindContractsByClientID(clientID)
 	if err != nil {
 		return nil, err
 	}

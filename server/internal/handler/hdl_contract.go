@@ -19,7 +19,7 @@ func NewContractHandler(svc service.ContractService) *ContractHandler {
 }
 
 // POST /contracts
-func (h *ContractHandler) CreateContract(c *gin.Context) {
+func (hdl *ContractHandler) CreateContract(c *gin.Context) {
 	// Folosim ParseBody pentru a lua DTO-ul (asigură-te că în dto.ContractDTO ai tag-ul binding:"required" pe ClientID)
 	request, err := utils.ParseBody[dto.ContractDTO](c)
 	if err != nil {
@@ -27,22 +27,22 @@ func (h *ContractHandler) CreateContract(c *gin.Context) {
 		return
 	}
 
-	ownerID, ok := h.getUserID(c)
+	ownerID, ok := hdl.getUserID(c)
 	if !ok { return }
 
-	// Notă: SyncContracts primește de obicei un slice. 
+	// Notă: ProcessContractImport primește de obicei un slice. 
 	// Dacă trimiți un singur obiect, verifică dacă serviciul așteaptă []dto.ContractDTO sau doar unul.
-	result := h.svc.SyncContracts(request, ownerID)
+	result := hdl.svc.ProcessContractImport(request, ownerID)
 	c.JSON(http.StatusCreated, result)
 }
 
 // GET /contracts/:client_id
-func (h *ContractHandler) GetContractsByClientID(c *gin.Context) {
+func (hdl *ContractHandler) GetContractsByClientID(c *gin.Context) {
 	// Extragem "client_id" direct din URL-ul definit în rute
-	clientID, ok := h.parseID(c, "client_id")
+	clientID, ok := hdl.parseID(c, "client_id")
 	if !ok { return }
 
-	contracts, err := h.svc.GetContractsByClient(clientID)
+	contracts, err := hdl.svc.GetContractsByClient(clientID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Eroare la recuperarea listei de contracte"})
 		return
@@ -53,7 +53,7 @@ func (h *ContractHandler) GetContractsByClientID(c *gin.Context) {
 
 // --- HELPER FUNCTIONS ---
 
-func (h *ContractHandler) getUserID(c *gin.Context) (uint, bool) {
+func (hdl *ContractHandler) getUserID(c *gin.Context) (uint, bool) {
 	val, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Lipsă autorizare"})
@@ -69,7 +69,7 @@ func (h *ContractHandler) getUserID(c *gin.Context) (uint, bool) {
 	return ownerID, true
 }
 
-func (h *ContractHandler) parseID(c *gin.Context, paramName string) (uint, bool) {
+func (hdl *ContractHandler) parseID(c *gin.Context, paramName string) (uint, bool) {
 	idStr := c.Param(paramName)
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
