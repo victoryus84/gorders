@@ -22,7 +22,6 @@ func (rep *Repository) CreateClient(client *models.Client) error {
     return rep.db.Create(client).Error
 }
 
-// UpsertClient face Insert, sau Update dacă dă de un duplicat pe coloana 'code'
 func (rep *Repository) UpsertClient(client *models.Client) error {
    // 1. Definim separat regula: "Ce facem dacă găsim un duplicat?"
     regulaConflict := clause.OnConflict{
@@ -43,6 +42,19 @@ func (rep *Repository) UpsertClient(client *models.Client) error {
 
     // 4. Totul a decurs perfect
     return nil
+}
+
+func (rep *Repository) UpsertClientsBatch(clients []*models.Client, batchSize int) error {
+    regulaConflict := clause.OnConflict{
+        Columns:   []clause.Column{{Name: "code"}},
+        DoUpdates: clause.AssignmentColumns([]string{
+            "name", "client_type_id", "fiscal_id", "email", "phone", 
+            "fiscal_address", "postal_address", "client_group_id",
+        }),
+    }
+
+    // Aici e magia: CreateInBatches
+    return rep.db.Clauses(regulaConflict).CreateInBatches(clients, batchSize).Error
 }
 
 func (rep *Repository) CreateClientGroup(group *models.ClientGroup) error {

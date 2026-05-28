@@ -31,9 +31,9 @@ type ClientAddressDTO struct {
 
 // Rezultat pentru import masiv
 type ImportResult struct {
-	Status        string              `json:"status"`
-	TotalCreated  int                 `json:"total_created"`
-	TotalSkipped  int                 `json:"total_skipped"`
-	ErrorsPreview []map[string]string `json:"errors_preview"`
-	Message       string              `json:"message"`
+	Status         string              `json:"status"`
+	TotalProcessed int                 `json:"total_processed"`
+	TotalSkipped   int                 `json:"total_skipped"`
+	ErrorsPreview  []map[string]string `json:"errors_preview"`
+	Message        string              `json:"message"`
 }

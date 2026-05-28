@@ -34,30 +34,30 @@ func NewContractService(repo ContractRepository, cfg *config.Config, kp *kafka.P
 
 // --- LOGICA DE BUSINESS (SYNC) ---
 
-func (s *contractService) SyncContracts(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
+func (svc *contractService) SyncContracts(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
 	createdCount := 0
 	skipped := make([]map[string]string, 0)
 
 	for _, req := range requests {
 		// 1. Validare rapidă
 		if strings.TrimSpace(req.FiscalID) == "" {
-			skipped = append(skipped, s.logSkip(req.Name, "FiscalID lipsă"))
+			skipped = append(skipped, svc.logSkip(req.Name, "FiscalID lipsă"))
 			continue
 		}
 
 		// 2. Găsire client
-		client, err := s.repo.FindClientByFiscalID(req.FiscalID)
+		client, err := svc.repo.FindClientByFiscalID(req.FiscalID)
 		if err != nil {
-			skipped = append(skipped, s.logSkip(req.Name, "Client inexistent: "+req.FiscalID))
+			skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.FiscalID))
 			continue
 		}
 
 		// 3. Conversie DTO -> Model (Logica de transformare e izolată)
-		contract := s.mapDTOToModel(req, client.ID, ownerID)
+		contract := svc.mapDTOToModel(req, client.ID, ownerID)
 
 		// 4. Salvare
-		if err := s.repo.CreateContract(contract); err != nil {
-			skipped = append(skipped, s.logSkip(req.Number, "Eroare DB: "+err.Error()))
+		if err := svc.repo.CreateContract(contract); err != nil {
+			skipped = append(skipped, svc.logSkip(req.Number, "Eroare DB: "+err.Error()))
 			continue
 		}
 		createdCount++
@@ -65,17 +65,17 @@ func (s *contractService) SyncContracts(requests []dto.ContractDTO, ownerID uint
 
 	return dto.ImportResult{
 		Status:        "success",
-		TotalCreated:  createdCount,
-		TotalSkipped:  len(skipped),
-		ErrorsPreview: s.limitErrors(skipped, 20),
-		Message:       "Sincronizare contracte finalizată",
+		TotalProcessed: createdCount,
+		TotalSkipped:   len(skipped),
+		ErrorsPreview:  svc.limitErrors(skipped, 20),
+		Message:        "Sincronizare contracte finalizată",
 	}
 }
 
 // --- IMPLEMENTARE METODE LIPSĂ (Pentru a repara erorile de compilare) ---
 
-func (s *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error) {
-	contract, err := s.repo.FindContractByID(id)
+func (svc *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error) {
+	contract, err := svc.repo.FindContractByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func (s *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error) 
 	}, nil
 }
 
-func (s *contractService) GetContractsByClient(clientID uint) ([]dto.ContractDTO, error) {
-	contracts, err := s.repo.FindContractsByClientID(clientID)
+func (svc *contractService) GetContractsByClient(clientID uint) ([]dto.ContractDTO, error) {
+	contracts, err := svc.repo.FindContractsByClientID(clientID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +106,11 @@ func (s *contractService) GetContractsByClient(clientID uint) ([]dto.ContractDTO
 
 // --- HELPER FUNCTIONS (Curățenia din labirint) ---
 
-func (s *contractService) mapDTOToModel(req dto.ContractDTO, clientID uint, ownerID uint) *models.Contract {
+func (svc *contractService) mapDTOToModel(req dto.ContractDTO, clientID uint, ownerID uint) *models.Contract {
 	return &models.Contract{
 		Name:     req.Name,
-		Number:   s.stringPtr(req.Number),
-		Date:     s.parse1CDate(req.Date),
+		Number:   svc.stringPtr(req.Number),
+		Date:     svc.parse1CDate(req.Date),
 		Amount:   req.Amount,
 		Status:   req.Status,
 		ClientID: clientID,
@@ -118,7 +118,7 @@ func (s *contractService) mapDTOToModel(req dto.ContractDTO, clientID uint, owne
 	}
 }
 
-func (s *contractService) parse1CDate(dateStr string) *time.Time {
+func (svc *contractService) parse1CDate(dateStr string) *time.Time {
 	dateStr = strings.TrimSpace(dateStr)
 	if dateStr == "" || dateStr == "00.00.0000" || dateStr == "01-01-0001" {
 		return nil
@@ -130,7 +130,7 @@ func (s *contractService) parse1CDate(dateStr string) *time.Time {
 	return &t
 }
 
-func (s *contractService) stringPtr(str string) *string {
+func (svc *contractService) stringPtr(str string) *string {
 	str = strings.TrimSpace(str)
 	if str == "" {
 		return nil
@@ -138,11 +138,11 @@ func (s *contractService) stringPtr(str string) *string {
 	return &str
 }
 
-func (s *contractService) logSkip(name, reason string) map[string]string {
+func (svc *contractService) logSkip(name, reason string) map[string]string {
 	return map[string]string{"item": name, "reason": reason}
 }
 
-func (s *contractService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+func (svc *contractService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
 	if len(skipped) > limit {
 		return skipped[:limit]
 	}

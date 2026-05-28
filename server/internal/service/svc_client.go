@@ -16,6 +16,7 @@ type ClientRepository interface {
 	// Client methods
 	CreateClient(client *models.Client) error
 	UpsertClient(client *models.Client) error
+	UpsertClientsBatch(clients []*models.Client, batchSize int) error
 	FindClientByCode(code string) (*models.Client, error)
 	FindClientByFiscalID(fiscalID string) (*models.Client, error)
 	GetFirst1000Clients() ([]models.Client, error)
@@ -60,7 +61,8 @@ func NewClientService(
 
 // ProcessClientImport - Logica masivă de import pe care am scos-o din Handler
 func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult {
-	created := make([]*models.Client, 0)
+	// 1. Pregătim "cutia" în care adunăm clienții
+	clientsToSave := make([]*models.Client, 0, len(requests))
 	skipped := make([]map[string]string, 0)
 	topic := svc.cfg.GetTopic("clients")
 
@@ -103,34 +105,33 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 			ClientGroupID: dbGroupID,
 		}
 
-		// E. Create / Upsert
-		if err := svc.rep.UpsertClient(client); err != nil {
-            skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
-            continue
+		clientsToSave = append(clientsToSave, client)
+	}	
+	
+	// 3. Executăm UPSERT-ul masiv (câte 1000 o dată)
+    // Durează o fracțiune de secundă pentru toți cei X de clienți!
+    if err := svc.rep.UpsertClientsBatch(clientsToSave, 1000); err != nil {
+        return dto.ImportResult{
+            Status:  "error",
+            Message: "Eroare fatală la salvarea în masă: " + err.Error(),
         }
+    }
 
-		// F. KAFKA
-		// Folosim gorutină pentru a nu încetini importul
-		go func(mod_client *models.Client) {
-			payload, _ := json.Marshal(mod_client)
-
-			// Publish-ul tău universal
-			_ = svc.kfk.Publish(context.Background(), topic, mod_client.FiscalID, payload)
-
-			// Notă: Dacă ai un logger (ex: zap, logrus), aici ar trebui să fie:
-			// svc.logger.Error("kafka publish failed", "client", mod_client.FiscalID, "err", err)
-		}(client)
-
-		created = append(created, client)
-	}
+	// 4. KAFKA: Acum că știm că s-au salvat 100% cu succes în Postgres, îi trimitem către Kafka
+    for _, mod_client := range clientsToSave {
+        go func(client *models.Client) {
+            payload, _ := json.Marshal(client)
+            _ = svc.kfk.Publish(context.Background(), topic, client.Code, payload)
+        }(mod_client)
+    }
 
 	return dto.ImportResult{
-		Status:        "success",
-		TotalCreated:  len(created),
-		TotalSkipped:  len(skipped),
-		ErrorsPreview: svc.limitErrors(skipped, 20),
-		Message:       "Import finalizat",
-	}
+        Status:        "success",
+        TotalProcessed: len(clientsToSave),
+        TotalSkipped:  len(skipped),
+        ErrorsPreview: svc.limitErrors(skipped, 20),
+        Message:       "Import în masă finalizat instantaneu",
+    }
 }
 
 func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO) dto.ImportResult {
@@ -195,11 +196,11 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
     }
 
 	return dto.ImportResult{
-		Status:        "success",
-		TotalCreated:  len(created),
-		TotalSkipped:  len(skipped),
-		ErrorsPreview: svc.limitErrors(skipped, 20),
-		Message:       "Import finalizat",
+		Status:         "success",
+		TotalProcessed: len(created),
+		TotalSkipped:   len(skipped),
+		ErrorsPreview:  svc.limitErrors(skipped, 20),
+		Message:        "Import finalizat",
 	}
 }
 
@@ -237,9 +238,9 @@ func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, 
 
 	return dto.ImportResult{
 		Status:        "success",
-		TotalCreated:  createdCount,
-		TotalSkipped:  len(skipped),
-		ErrorsPreview: svc.limitErrors(skipped, 20),
+		TotalProcessed: createdCount,
+		TotalSkipped:   len(skipped),
+		ErrorsPreview:  svc.limitErrors(skipped, 20),
 	}
 }
 
