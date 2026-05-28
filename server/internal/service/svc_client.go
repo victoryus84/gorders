@@ -23,6 +23,7 @@ type ClientRepository interface {
 	FindClientByID(id uint) (*models.Client, error)
 	// Group client methods
 	CreateClientGroup(group *models.ClientGroup) error
+	UpsertClientGroup(group *models.ClientGroup) error
 	FindClientGroupByName(name string) (*models.ClientGroup, error)
 	FindClientGroupByCode(code string) (*models.ClientGroup, error)
 	GetAllClientGroups() ([]models.ClientGroup, error)
@@ -78,7 +79,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 			continue
 		}
 
-		// B. Verificare duplicate () - Acum folosim metoda de repo care face direct UPSET (Create sau Update dacă există)
+		// B. Verificare duplicate ()
 		// existing, err := svc.rep.FindClientByCode(req.Code)
 		// if err == nil && existing != nil {
 		// 	skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "duplicate"})
@@ -153,11 +154,11 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
         }
 
         // B. Verificare duplicate
-        existing, err := svc.rep.FindClientGroupByCode(req.Code)
-        if err == nil && existing != nil {
-            skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
-            continue
-        }
+        // existing, err := svc.rep.FindClientGroupByCode(req.Code)
+        // if err == nil && existing != nil {
+        //     skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
+        //     continue
+        // }
 
         // C. MAPAREA IERARHIEI - Căutăm în dicționar dacă avem codul părintelui și luăm ID-ul lui
         var parentIDPtr *uint
@@ -176,8 +177,8 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
         }
 
         // E. Salvare
-        if err := svc.rep.CreateClientGroup(clientgroup); err != nil {
-            skipped = append(skipped, map[string]string{"name": req.Name, "reason": err.Error()})
+        if err := svc.rep.UpsertClientGroup(clientgroup); err != nil {
+            skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
             continue
         }
 
@@ -297,16 +298,23 @@ func (svc *clientService) limitErrors(skipped []map[string]string, limit int) []
 }
 
 func (svc *clientService) resolveGroupIDFromMap(code string, groupMap map[string]uint) *uint {
+	// 1. Curățăm codul (trim, lower) pentru a evita problemele de formatare și caze sensitivity
 	cleanCode := strings.TrimSpace(code)
-
-	if cleanCode == "" || strings.ToLower(cleanCode) == "none" || strings.ToLower(cleanCode) == "n/a" {
+	lowerCode := strings.ToLower(cleanCode)
+	
+	// 2. Dacă nu a venit niciun cod, returnăm nil direct
+	switch lowerCode {
+	case "", "none", "n/a", "not inserted":
 		return nil
 	}
+	
+	// 3. AICI FOLOSIM PARAMETRUL: Căutăm codul în dicționar
+    if id, exists := groupMap[cleanCode]; exists {
+        return &id // Am găsit grupa, îi returnăm ID-ul sub formă de pointer
+    }
 
-	group, err := svc.rep.FindClientGroupByCode(cleanCode)
-	if err != nil || group == nil {
-		return nil
-	}
+    // 4. Dacă codul există în 1C dar nu l-am găsit în dicționarul nostru, returnăm nil
+    return nil
 
-	return &group.ID
+	
 }

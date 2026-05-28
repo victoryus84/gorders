@@ -49,6 +49,27 @@ func (rep *Repository) CreateClientGroup(group *models.ClientGroup) error {
     return rep.db.Create(group).Error
 }
 
+func (rep *Repository) UpsertClientGroup(group *models.ClientGroup) error {
+    // 1. Definim regula de conflict (ce facem dacă găsim un duplicat pe 'code')
+    regulaConflict := clause.OnConflict{
+        Columns: []clause.Column{{Name: "code"}}, // Cheia unică după care căutăm
+        DoUpdates: clause.AssignmentColumns([]string{
+            "name", // Câmpurile pe care le actualizăm dacă există deja
+        }),
+    }
+
+    // 2. Aplicăm regula și executăm comanda de Salvare/Creare
+    rezultat := rep.db.Clauses(regulaConflict).Create(group)
+
+    // 3. Verificăm eroarea în stilul clasic
+    if rezultat.Error != nil {
+        return rezultat.Error
+    }
+
+    // 4. Totul a decurs perfect
+    return nil
+}
+
 func (rep *Repository) CreateClientAddress(addr *models.ClientAddress) error {
 	return rep.db.Create(addr).Error
 }
