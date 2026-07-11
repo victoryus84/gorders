@@ -12,11 +12,12 @@ import (
 
 // ContractRepository - Ce așteptăm de la baza de date
 type ContractRepository interface {
-    CreateContract(contract *models.Contract) error
-    FindContractsByClientID(clientID uint) ([]models.Contract, error)
-    FindClientByCode(code string) (*models.Client, error)
+	CreateContract(contract *models.Contract) error
+	FindContractsByClientID(clientID uint) ([]models.Contract, error)
+	FindClientByCode(code string) (*models.Client, error)
 	FindContractByID(id uint) (*models.Contract, error)
 }
+
 // ContractService - Ce oferim Handler-ului (GOrders API)
 type ContractService interface {
 	ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult
@@ -35,40 +36,66 @@ func NewContractService(rep ContractRepository, cfg *config.Config, kp *kafka.Pr
 // --- LOGICA DE BUSINESS (SYNC) ---
 
 func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
-	createdCount := 0
 	skipped := make([]map[string]string, 0)
 
+	// Pregătim o "cutie" goală în care vom aduna contractele
+	contractsToSave := make([]*models.Contract, 0, len(requests))
+
+	// ==========================================
+	// 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
+	// ==========================================
+	clientMap := make(map[string]uint)
+
+	// Trebuie să ai o metodă în repo care aduce toate codurile și ID-urile clienților
+	// Dacă nu o ai, poți aduce toți clienții simplu: svc.rep.GetAllClients()
+	clients, _ := svc.rep.GetAllClientCodesAndIDs()
+	for _, c := range clients {
+		clientMap[c.Code] = c.ID // Încărcăm totul în memoria RAM a aplicației
+	}
+
+	// ==========================================
+	// 2. PROCESĂM ÎN MEMORIE
+	// ==========================================
 	for _, req := range requests {
-		// 1. Validare rapidă
+
 		if strings.TrimSpace(req.Code) == "" {
-			skipped = append(skipped, svc.logSkip(req.Name, "Code lipsă"))
+			skipped = append(skipped, svc.logSkip(req.Name, "Code (cod client) lipsă"))
 			continue
 		}
 
-		// 2. Găsire client
-		client, err := svc.rep.FindClientByCode(req.Code)
-		if err != nil {
+		// Căutăm clientul instantaneu în RAM, nu în baza de date!
+		dbClientID, exists := clientMap[req.Code]
+		if !exists {
 			skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.Code))
 			continue
 		}
 
-		// 3. Conversie DTO -> Model (Logica de transformare e izolată)
-		contract := svc.mapDTOToModel(req, client.ID, ownerID)
+		// Conversie DTO -> Model (exact logica ta, dar ne asigurăm că returnează un pointer &models.Contract)
+		contract := svc.mapDTOToModel(req, dbClientID, ownerID)
 
-		// 4. Salvare
-		if err := svc.rep.CreateContract(contract); err != nil {
-			skipped = append(skipped, svc.logSkip(req.Number, "Eroare DB: "+err.Error()))
-			continue
+		// Îl punem în cutie, NU salvăm încă!
+		contractsToSave = append(contractsToSave, contract)
+	}
+
+	// ==========================================
+	// 3. SALVAREA ÎN MASĂ (Tunul!)
+	// ==========================================
+	if len(contractsToSave) > 0 {
+		// Folosim metoda ta de Batch creată anterior!
+		if err := svc.rep.UpsertContractBatch(contractsToSave, 1000); err != nil {
+			return dto.ImportResult{
+				Status:  "error",
+				Message: "Eroare DB la salvarea în masă: " + err.Error(),
+			}
 		}
-		createdCount++
 	}
 
 	return dto.ImportResult{
-		Status:        "success",
-		TotalProcessed: createdCount,
+		Status:         "success",
+		TotalProcessed: len(contractsToSave),
 		TotalSkipped:   len(skipped),
 		ErrorsPreview:  svc.limitErrors(skipped, 20),
-		Message:        "Sincronizare contracte finalizată",
+		Message:        "Sincronizare contracte finalizată instantaneu!",
 	}
 }
 
