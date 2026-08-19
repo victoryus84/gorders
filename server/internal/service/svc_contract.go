@@ -67,16 +67,23 @@ func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ow
             continue
         }
 
-      // Conversie DTO -> Model
+     // Conversie DTO -> Model (asigură-te că în mapDTOToModel asignezi contract.SyncID = req.SyncID)
         contract := svc.mapDTOToModel(req, dbClientID, ownerID)
         
-        // --- GENERĂM IDENTIFICATORUL EXTERN UNIC ---
-        // Ex: "00015_00002"
-        contract.SyncID = fmt.Sprintf("%s_%s", req.Code, req.Number)
-
-        // Sita din RAM va folosi tot această cheie ca să prevină dublurile din același XML!
-        uniqueContracts[contract.SyncID] = contract
-    }
+       // Get the key directly from 1C
+        syncKey := req.SyncID
+        
+        // Check if 1C sent a duplicate in the same file
+        if _, exists := uniqueContracts[syncKey]; exists {
+            // Log in English for the server console
+            fmt.Printf("🔥 XML DUPLICATE: Contract with SyncID '%s' appeared multiple times in the payload!\n", syncKey)
+            
+            // Textul pentru 1C rămâne în română (fără diacritice) ca să-l înțeleagă operatorii
+            skipped = append(skipped, svc.logSkip(req.Name, "Dublura in XML: "+syncKey))
+        }
+        
+        // Add to the map
+        uniqueContracts[syncKey] = contract
 
     // --- RECONSTRUIM ARRAY-UL PENTRU GORM ---
     // Acum că am scăpat de dubluri, mutăm datele din map înapoi într-un slice
@@ -142,6 +149,7 @@ func (svc *contractService) GetContractsByClient(clientID uint) ([]dto.ContractD
 
 func (svc *contractService) mapDTOToModel(req dto.ContractDTO, clientID uint, ownerID uint) *models.Contract {
 	return &models.Contract{
+		SyncID: req.SyncID,
 		Name:     req.Name,
 		Number:   svc.stringPtr(req.Number),
 		Date:     svc.parse1CDate(req.Date),
