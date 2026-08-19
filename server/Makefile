@@ -38,14 +38,22 @@ clean:
 	docker compose -f compose-prod.yml down --remove-orphans -v
 	docker system prune -f
 
+# English: Show nginx logs
+# Română: Afișează logurile nginx
+# Русский: Показать логи nginx
+lognginx:
+	@cat /var/log/gorders_nginx_reload.log 2>/dev/null || echo "Logul este gol. Primul reload automat va avea loc duminică noaptea!"
+
 # English: Show help information
 # Română: Afișează informații de ajutor
 # Русский: Показать справку
 help:
 	@echo "Commands / Comenzi / Команды:"
-	@echo "  make build   - Build and start stack / Construiește și pornește / Построить и запустить"
-	@echo "  make up      - Start stack / Pornește stiva / Запуск стека"
-	@echo "  make down    - Stop stack / Oprește stiva / Остановка стека"
-	@echo "  make restart - Restart stack / Repornește stiva / Перезагрузка"
-	@echo "  make clean   - Full cleanup (DATA LOSS!) / Curățare (PIERDERE DATE!) / Очистка (ПОТЕРЯ ДАННЫХ!)"
-	@echo "  make help    - Show this help / Ajutor / Справка"
+	@echo "  make build    - Build and start stack / Construiește și pornește / Построить и запустить"
+	@echo "  make up       - Start stack / Pornește stiva / Запуск стека"
+	@echo "  make down     - Stop stack / Oprește stiva / Остановка стека"
+	@echo "  make restart  - Restart stack / Repornește stiva / Перезагрузка"
+	@echo "  make clean    - Full cleanup (DATA LOSS!) / Curățare (PIERDERE DATE!) / Очистка (ПОТЕРЯ ДАННЫХ!)"
+	@echo "  make lognginx - Show nginx logs / Afișează logurile nginx / Показать логи nginx"
+	@echo "  make help     - Show this help / Ajutor / Справка"
+	
