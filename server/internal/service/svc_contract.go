@@ -3,7 +3,7 @@ package service
 import (
 	"strings"
 	"time"
-
+	"fmt"
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/kafka"
@@ -40,65 +40,70 @@ func NewContractService(rep ContractRepository, cfg *config.Config, kp *kafka.Pr
 func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
 	skipped := make([]map[string]string, 0)
 
-	// Pregătim o "cutie" goală în care vom aduna contractele
-	contractsToSave := make([]*models.Contract, 0, len(requests))
-
-	// ==========================================
-	// 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
-	// ==========================================
-	clientMap := make(map[string]uint)
-
-	// Trebuie să ai o metodă în repo care aduce toate codurile și ID-urile clienților
-	// Dacă nu o ai, poți aduce toți clienții simplu: svc.rep.GetAllClients()
-	clientMap, err := svc.rep.FindAllClientCodesMap()
-	if err != nil {
+    // ==========================================
+    // 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
+    // ==========================================
+    clientMap, err := svc.rep.FindAllClientCodesMap()
+    if err != nil {
         clientMap = make(map[string]uint) 
     }
 
-	// ==========================================
-	// 2. PROCESĂM ÎN MEMORIE
-	// ==========================================
-	for _, req := range requests {
+    // AICI E "SITA": Pregătim un map în loc de array pentru a elimina dublurile automat
+    uniqueContracts := make(map[string]*models.Contract)
 
-		if strings.TrimSpace(req.Code) == "" {
-			skipped = append(skipped, svc.logSkip(req.Name, "Code (cod client) lipsă"))
-			continue
-		}
+    // ==========================================
+    // 2. PROCESĂM ÎN MEMORIE ȘI FILTRĂM DUBURILE
+    // ==========================================
+    for _, req := range requests {
 
-		// Căutăm clientul instantaneu în RAM, nu în baza de date!
-		dbClientID, exists := clientMap[req.Code]
-		if !exists {
-			skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.Code))
-			continue
-		}
+        if strings.TrimSpace(req.Code) == "" {
+            skipped = append(skipped, svc.logSkip(req.Name, "Code (cod client) lipsă"))
+            continue
+        }
 
-		// Conversie DTO -> Model (exact logica ta, dar ne asigurăm că returnează un pointer &models.Contract)
-		contract := svc.mapDTOToModel(req, dbClientID, ownerID)
+        dbClientID, exists := clientMap[req.Code]
+        if !exists {
+            skipped = append(skipped, svc.logSkip(req.Name, "Client inexistent: "+req.Code))
+            continue
+        }
 
-		// Îl punem în cutie, NU salvăm încă!
-		contractsToSave = append(contractsToSave, contract)
-	}
+      // Conversie DTO -> Model
+        contract := svc.mapDTOToModel(req, dbClientID, ownerID)
+        
+        // --- GENERĂM IDENTIFICATORUL EXTERN UNIC ---
+        // Ex: "00015_00002"
+        contract.SyncID = fmt.Sprintf("%s_%s", req.Code, req.Number)
 
-	// ==========================================
-	// 3. SALVAREA ÎN MASĂ (Tunul!)
-	// ==========================================
-	if len(contractsToSave) > 0 {
-		// Folosim metoda ta de Batch creată anterior!
-		if err := svc.rep.UpsertContractBatch(contractsToSave, 1000); err != nil {
-			return dto.ImportResult{
-				Status:  "error",
-				Message: "Eroare DB la salvarea în masă: " + err.Error(),
-			}
-		}
-	}
+        // Sita din RAM va folosi tot această cheie ca să prevină dublurile din același XML!
+        uniqueContracts[contract.SyncID] = contract
+    }
 
-	return dto.ImportResult{
-		Status:         "success",
-		TotalProcessed: len(contractsToSave),
-		TotalSkipped:   len(skipped),
-		ErrorsPreview:  svc.limitErrors(skipped, 20),
-		Message:        "Sincronizare contracte finalizată instantaneu!",
-	}
+    // --- RECONSTRUIM ARRAY-UL PENTRU GORM ---
+    // Acum că am scăpat de dubluri, mutăm datele din map înapoi într-un slice
+    contractsToSave := make([]*models.Contract, 0, len(uniqueContracts))
+    for _, c := range uniqueContracts {
+        contractsToSave = append(contractsToSave, c)
+    }
+
+    // ==========================================
+    // 3. SALVAREA ÎN MASĂ (Tunul!)
+    // ==========================================
+    if len(contractsToSave) > 0 {
+        if err := svc.rep.UpsertContractBatch(contractsToSave, 1000); err != nil {
+            return dto.ImportResult{
+                Status:  "error",
+                Message: "Eroare DB la salvarea în masă: " + err.Error(),
+            }
+        }
+    }
+
+    return dto.ImportResult{
+        Status:         "success",
+        TotalProcessed: len(contractsToSave), // Acum arată nr real, fără dubluri!
+        TotalSkipped:   len(skipped),
+        ErrorsPreview:  svc.limitErrors(skipped, 20),
+        Message:        "Sincronizare contracte finalizată instantaneu!",
+    }
 }
 
 // --- IMPLEMENTARE METODE LIPSĂ (Pentru a repara erorile de compilare) ---

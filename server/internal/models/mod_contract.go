@@ -10,16 +10,17 @@ import (
 type Contract struct {
 	gorm.Model
 	UUIDModel `gorm:"embedded"`
-	Name      string            `gorm:"type:varchar(100);not null"`        						 // Numele contractului
-	Number    *string           `gorm:"type:varchar(50);uniqueIndex:idx_client_contract_unique"` // Numărul contractului
-	Date      *time.Time        `gorm:"type:date"`                         						 // Data contractului
-	Amount    float64           `gorm:"type:decimal(10,2);not null"`       						 // Suma contractului
-	Status    string            `gorm:"type:varchar(20);not null"`         						 // Statutul ("active", "closed" etc.)
-	ClientID  uint              `gorm:"not null;uniqueIndex:idx_client_contract_unique"`		 // Cheie externă către Client
-	Client    Client            `gorm:"foreignKey:ClientID;references:ID"` 						 // Clientul
-	OwnerID   uint              `gorm:"not null"`                          						 // ID-ul ownerului (utilizatorului)
-	Owner     User              `gorm:"foreignKey:OwnerID;references:ID"`  						 // Ownerul contractului
-	Addresses []ContractAddress `gorm:"foreignKey:ContractID"`             						 // Adresele asociate contractului
+	SyncID    string     `gorm:"type:varchar(100);uniqueIndex;not null"`	// SyncID contractului
+	Name      string            `gorm:"type:varchar(100);not null"`        	// Numele contractului
+	Number    *string           `gorm:"type:varchar(50)"` 					// Numărul contractului
+	Date      *time.Time        `gorm:"type:date"`                         	// Data contractului
+	Amount    float64           `gorm:"type:decimal(10,2);not null"`       	// Suma contractului
+	Status    string            `gorm:"type:varchar(20);not null"`         	// Statutul ("active", "closed" etc.)
+	ClientID  uint              `gorm:"not null"`							// Cheie externă către Client
+	Client    Client            `gorm:"foreignKey:ClientID;references:ID"` 	// Clientul
+	OwnerID   uint              `gorm:"not null"`                          	// ID-ul ownerului (utilizatorului)
+	Owner     User              `gorm:"foreignKey:OwnerID;references:ID"`  	// Ownerul contractului
+	Addresses []ContractAddress `gorm:"foreignKey:ContractID"`             	// Adresele asociate contractului
 }
 
 // ********** ContractAddress - Adresă asociată contractului **********
