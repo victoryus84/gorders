@@ -13,9 +13,11 @@ import (
 // ContractRepository - Ce așteptăm de la baza de date
 type ContractRepository interface {
 	CreateContract(contract *models.Contract) error
+	UpsertContractBatch(contracts []*models.Contract, batchSize int) error
 	FindContractsByClientID(clientID uint) ([]models.Contract, error)
 	FindClientByCode(code string) (*models.Client, error)
 	FindContractByID(id uint) (*models.Contract, error)
+	FindAllClientCodesMap() (map[string]uint, error)
 }
 
 // ContractService - Ce oferim Handler-ului (GOrders API)
@@ -48,10 +50,10 @@ func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ow
 
 	// Trebuie să ai o metodă în repo care aduce toate codurile și ID-urile clienților
 	// Dacă nu o ai, poți aduce toți clienții simplu: svc.rep.GetAllClients()
-	clients, _ := svc.rep.GetAllClientCodesAndIDs()
-	for _, c := range clients {
-		clientMap[c.Code] = c.ID // Încărcăm totul în memoria RAM a aplicației
-	}
+	clientMap, err := svc.rep.FindAllClientCodesMap()
+	if err != nil {
+        clientMap = make(map[string]uint) 
+    }
 
 	// ==========================================
 	// 2. PROCESĂM ÎN MEMORIE
