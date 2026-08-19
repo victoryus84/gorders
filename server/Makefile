@@ -42,7 +42,7 @@ clean:
 # Română: Afișează logurile nginx
 # Русский: Показать логи nginx
 lognginx:
-	@cat /var/log/gorders_nginx_reload.log 2>/dev/null || echo "Logul este gol. Primul reload automat va avea loc duminică noaptea!"
+	@cat /var/log/gorders_nginx_reload.log 2>/dev/null || echo "Log is not available. First log will be created on sunday at 03:00 or after nginx reload."
 
 # English: Show help information
 # Română: Afișează informații de ajutor
