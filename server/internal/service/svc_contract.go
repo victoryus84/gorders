@@ -23,7 +23,6 @@ type ContractRepository interface {
 // ContractService - Ce oferim Handler-ului (GOrders API)
 type ContractService interface {
 	ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult
-	GetContractDetails(id uint) (*dto.ContractDTO, error) // Am aliniat numele cu Handler-ul
 	GetContractsByClient(clientID uint) ([]dto.ContractDTO, error)
 }
 
@@ -84,7 +83,7 @@ func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ow
         
         // Add to the map
         uniqueContracts[syncKey] = contract
-
+	}	
     // --- RECONSTRUIM ARRAY-UL PENTRU GORM ---
     // Acum că am scăpat de dubluri, mutăm datele din map înapoi într-un slice
     contractsToSave := make([]*models.Contract, 0, len(uniqueContracts))
@@ -111,22 +110,6 @@ func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ow
         ErrorsPreview:  svc.limitErrors(skipped, 20),
         Message:        "Sincronizare contracte finalizată instantaneu!",
     }
-}
-
-// --- IMPLEMENTARE METODE LIPSĂ (Pentru a repara erorile de compilare) ---
-
-func (svc *contractService) GetContractDetails(id uint) (*dto.ContractDTO, error) {
-	contract, err := svc.rep.FindContractByID(id)
-	if err != nil {
-		return nil, err
-	}
-	// Aici transformi modelul de DB înapoi în DTO pentru JSON
-	return &dto.ContractDTO{
-		Name:   contract.Name,
-		Amount: contract.Amount,
-		Status: contract.Status,
-		// Adaugă restul câmpurilor necesare
-	}, nil
 }
 
 func (svc *contractService) GetContractsByClient(clientID uint) ([]dto.ContractDTO, error) {
