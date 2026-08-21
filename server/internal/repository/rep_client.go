@@ -163,7 +163,41 @@ func (rep *Repository) GetAllClientGroups() ([]models.ClientGroup, error) {
     return groups, nil
 }
 
+func (rep *Repository) FindAllClientCodesMap() (map[string]uint, error) {
+	// Definim o structură "fantomă" doar aici, ca să nu ne mai streseze prin alte fișiere
+	type clientResult struct {
+		ID   uint
+		Code string
+	}
+	var results []clientResult
 
+	// Aducem datele din DB (selectăm id și code din tabelul clienților)
+	if err := rep.db.Model(&models.Client{}).Select("id, code").Find(&results).Error; err != nil {
+		return nil, err
+	}
+
+	// Transformăm direct într-un dicționar (map) pe care Go îl iubește
+	clientMap := make(map[string]uint, len(results))
+	for _, r := range results {
+		clientMap[r.Code] = r.ID
+	}
+
+	return clientMap, nil
+}
+
+// Address methods
+func (rep *Repository) UpsertClientsAddressBatch(addresses []*models.ClientAddress, batchSize int) error {
+    regulaConflict := clause.OnConflict{
+        Columns: []clause.Column{
+            {Name: "sync_id"}, // <-- Baza de date caută dubluri după asta!
+        },
+        DoUpdates: clause.AssignmentColumns([]string{
+            "name", "client_id", "address", "delivery_days", "type", "updated_at",
+        }),
+    }
+
+    return rep.db.Clauses(regulaConflict).CreateInBatches(addresses, batchSize).Error
+}
 
 
 

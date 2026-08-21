@@ -59,7 +59,7 @@ func main() {
 	// Create services
 	svc_user := service.NewUserService(rep, cfg)
 	svc_client := service.NewClientService(rep, cfg, kp)
-	svc_contract := service.NewContractService(rep, cfg, kp)
+	svc_contract := service.NewContractService(rep, rep,cfg, kp)
 
 	logger.LogInfo("✅ All services initialized")
 

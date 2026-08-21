@@ -40,14 +40,16 @@ type ClientGroup struct {
 type ClientAddress struct {
 	gorm.Model
 	UUIDModel `gorm:"embedded"`
-	Code      string  `gorm:"type:varchar(15);unique;not null"`  // Codul adresei (unic)
-	Name      string  `gorm:"type:varchar(100);not null"`        // Numele adresei
-	Address   *string `gorm:"type:text"`                         // Adresa
-	Type      string  `gorm:"type:varchar(50)"`                  // Tipul adresei ("billing", "shipping" etc.)
-	ClientID  uint    `gorm:"not null"`                          // Cheie externă către Client
-	Client    Client  `gorm:"foreignKey:ClientID;references:ID"` // Clientul
-	OwnerID   uint    `gorm:"not null"`                          // ID-ul ownerului (utilizatorului)
-	Owner     User    `gorm:"foreignKey:OwnerID;references:ID"`  // Ownerul adresei
+	SyncID      string  `gorm:"type:varchar(100);uniqueIndex;not null"` // SyncID adresei (unic, pentru sincronizare cu 1C)
+	Name        string  `gorm:"type:varchar(100);not null"`             // Numele adresei
+	Address     *string `gorm:"type:text"`                              // Adresa
+	Type        string  `gorm:"type:varchar(50)"`                       // Tipul adresei ("billing", "shipping" etc.)
+	Description *string  `gorm:"type:text"`                             // Descrierea adresei
+	DeliveryDays int16  `gorm:"default:0;not null"` 					// Aici ținem bitmask-ul pentru zilele de livrare (0-6 pentru L-D)
+	ClientID    uint    `gorm:"not null"`                               // Cheie externă către Client
+	Client      Client  `gorm:"foreignKey:ClientID;references:ID"`      // Clientul
+	OwnerID     uint    `gorm:"not null"`                               // ID-ul ownerului (utilizatorului)
+	Owner       User    `gorm:"foreignKey:OwnerID;references:ID"`       // Ownerul adresei
 }
 
 // ********** Client - Client (beneficiar) **********

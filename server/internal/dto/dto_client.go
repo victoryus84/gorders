@@ -22,10 +22,11 @@ type ClientGroupDTO struct {
 }
 
 type ClientAddressDTO struct {
-	ID       uint   `json:"id,omitempty" xml:"id,omitempty"`
-	FiscalID string `json:"fiscal_id" xml:"fiscal_id" binding:"required"`
-	Name     string `json:"name" xml:"name" binding:"required"`
-	Address  string `json:"address" xml:"address" binding:"required"`
+	SyncID       string `json:"sync_id"`
+	Code		 string `json:"code" xml:"code" binding:"required"` // client code
+	Name         string `json:"name"`
+	Address      string `json:"address"`
+	DeliveryDays int16  `json:"delivery_days"` // Primește direct suma biților din 1C! (ex: 76)
 	Type     string `json:"type" xml:"type"` // billing, shipping
 }
 

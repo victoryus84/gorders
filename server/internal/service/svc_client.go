@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"fmt"
 
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/dto"
@@ -22,6 +23,7 @@ type ClientRepository interface {
 	GetFirst1000Clients() ([]models.Client, error)
 	FindClientsByQuery(query string) ([]models.Client, error)
 	FindClientByID(id uint) (*models.Client, error)
+	FindAllClientCodesMap() (map[string]uint, error)
 	// Group client methods
 	CreateClientGroup(group *models.ClientGroup) error
 	UpsertClientGroup(group *models.ClientGroup) error
@@ -30,6 +32,7 @@ type ClientRepository interface {
 	GetAllClientGroups() ([]models.ClientGroup, error)
 	// Address client methods
 	CreateClientAddress(addr *models.ClientAddress) error
+	UpsertClientsAddressBatch(addr []*models.ClientAddress, batchSize int) error
 }
 
 // Aici pui toate metodele pe care vrei să le folosească Handler-ul
@@ -206,42 +209,79 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 
 // ProcessAddressImport - Importul de adrese
 func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult {
-	createdCount := 0
 	skipped := make([]map[string]string, 0)
 
-	for _, req := range requests {
-		if strings.TrimSpace(req.FiscalID) == "" {
-			skipped = append(skipped, map[string]string{"address": req.Address, "reason": "fiscal_id_empty"})
-			continue
-		}
+    // ==========================================
+    // 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
+    // ==========================================
+    clientMap, err := svc.rep.FindAllClientCodesMap()
+    if err != nil {
+        clientMap = make(map[string]uint) 
+    }
 
-		client, err := svc.rep.FindClientByFiscalID(req.FiscalID)
-		if err != nil {
-			skipped = append(skipped, map[string]string{"address": req.Address, "reason": "client_not_found"})
-			continue
-		}
+    // AICI E "SITA": Pregătim un map în loc de array pentru a elimina dublurile automat
+    uniqueAddresses := make(map[string]*models.ClientAddress)
 
-		addr := &models.ClientAddress{
-			ClientID: client.ID,
-			Name:     req.Name,
-			Address:  &req.Address,
-			Type:     req.Type,
-			OwnerID:  ownerID,
-		}
+    // ==========================================
+    // 2. PROCESĂM ÎN MEMORIE ȘI FILTRĂM DUBURILE
+    // ==========================================
+    for _, req := range requests {
 
-		if err := svc.rep.CreateClientAddress(addr); err != nil {
-			skipped = append(skipped, map[string]string{"address": req.Address, "reason": err.Error()})
-			continue
-		}
-		createdCount++
-	}
+        if strings.TrimSpace(req.Code) == "" {
+            skipped = append(skipped, logSkip(req.Name, "Code (cod client) lipsă"))
+            continue
+        }
 
-	return dto.ImportResult{
-		Status:        "success",
-		TotalProcessed: createdCount,
-		TotalSkipped:   len(skipped),
-		ErrorsPreview:  svc.limitErrors(skipped, 20),
-	}
+        dbClientID, exists := clientMap[req.Code]
+        if !exists {
+            skipped = append(skipped, logSkip(req.Name, "Client inexistent: "+req.Code))
+            continue
+        }
+
+     // Conversie DTO -> Model (asigură-te că în mapDTOToModel asignezi contract.SyncID = req.SyncID)
+        address := mapDTOToModel(req, dbClientID, ownerID)
+        
+       // Get the key directly from 1C
+        syncKey := req.SyncID
+        
+        // Check if 1C sent a duplicate in the same file
+        if _, exists := uniqueAddresses[syncKey]; exists {
+            // Log in English for the server console
+            fmt.Printf("🔥 XML DUPLICATE: Contract with SyncID '%s' appeared multiple times in the payload!\n", syncKey)
+            
+            // Textul pentru 1C rămâne în română (fără diacritice) ca să-l înțeleagă operatorii
+            skipped = append(skipped, logSkip(req.Name, "Dublura in XML: "+syncKey))
+        }
+        
+        // Add to the map
+        uniqueAddresses[syncKey] = address
+	}	
+    // --- RECONSTRUIM ARRAY-UL PENTRU GORM ---
+    // Acum că am scăpat de dubluri, mutăm datele din map înapoi într-un slice
+    addressesToSave := make([]*models.ClientAddress, 0, len(uniqueAddresses))
+    for _, c := range uniqueAddresses {
+        addressesToSave = append(addressesToSave, c)
+    }
+
+    // ==========================================
+    // 3. SALVAREA ÎN MASĂ (Tunul!)
+    // ==========================================
+    if len(addressesToSave) > 0 {
+        if err := svc.rep.UpsertClientsAddressBatch(addressesToSave, 1000); err != nil {
+            return dto.ImportResult{
+                Status:  "error",
+                Message: "Eroare DB la salvarea în masă: " + err.Error(),
+            }
+        }
+    }
+
+    return dto.ImportResult{
+        Status:         "success",
+        TotalProcessed: len(addressesToSave), // Acum arată nr real, fără dubluri!
+        TotalSkipped:   len(skipped),
+        ErrorsPreview:  svc.limitErrors(skipped, 20),
+        Message:        "Sincronizare adrese finalizată instantaneu!",
+    }
 }
 
 // SearchClients - Caută și mapează rezultatele în DTO-uri curate
@@ -318,4 +358,19 @@ func (svc *clientService) resolveGroupIDFromMap(code string, groupMap map[string
     return nil
 
 	
+}
+
+
+// --- HELPER FUNCTIONS (Curățenia din labirint) ---
+
+func mapDTOToModel(req dto.ClientAddressDTO, clientID uint, ownerID uint) *models.ClientAddress {
+	return &models.ClientAddress{
+		SyncID:       req.SyncID,
+		Name:         req.Name,
+		Address:      stringPtr(req.Address), // Aici folosim unealta universala!
+		Type:         req.Type,
+		DeliveryDays: req.DeliveryDays,       // Pura magie: direct din 1C
+		ClientID:     clientID,
+		OwnerID:      ownerID,
+	}
 }
