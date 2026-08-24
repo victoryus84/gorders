@@ -28,6 +28,7 @@ func SetupRoutes(router *gin.Engine, hdl *handler.Handlers) {
 			clients.POST("", hdl.Client.CreateClient)
 			clients.POST("/groups", hdl.Client.CreateClientGroup)
 			clients.GET("/search", hdl.Client.SearchClients)
+			clients.POST("/addresses", hdl.Client.CreateClientAddress)
 			//clients.GET("/:id", hdl.Client.GetClientByID)
 		}
 
