@@ -134,7 +134,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 		TotalProcessed: len(clientsToSave),
 		TotalSkipped:   len(skipped),
 		ErrorsPreview:  svc.limitErrors(skipped, 20),
-		Message:        "Import în masă finalizat instantaneu",
+		Message:        "Syncronizare clienti finalizata!",
 	}
 }
 
@@ -235,7 +235,7 @@ func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, 
 
 		dbClientID, exists := clientMap[req.Code]
 		if !exists {
-			skipped = append(skipped, logSkip(req.Name, "Client inexistent: "+req.Code))
+			skipped = append(skipped, logSkip(req.Name, "Adresa inexistenta: "+req.Code))
 			continue
 		}
 
@@ -281,7 +281,7 @@ func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, 
 		TotalProcessed: len(addressesToSave), // Acum arată nr real, fără dubluri!
 		TotalSkipped:   len(skipped),
 		ErrorsPreview:  svc.limitErrors(skipped, 20),
-		Message:        "Sincronizare adrese finalizată instantaneu!",
+		Message:        "Sincronizare adrese finalizata!",
 	}
 }
 
