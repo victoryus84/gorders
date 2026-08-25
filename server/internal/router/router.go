@@ -8,7 +8,7 @@ import (
 
 // SetupRoutes configures all API routes
 func SetupRoutes(router *gin.Engine, hdl *handler.Handlers) {
-	
+
 	// --- Rute Core (Sistem) ---
 	router.GET("/health", hdl.Core.Check)
 	router.GET("/version", hdl.Core.Version)

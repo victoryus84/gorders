@@ -37,7 +37,7 @@ func ParseBody[T any](c *gin.Context) ([]T, error) {
 		if err := xml.Unmarshal(data, &single); err == nil {
 			return []T{single}, nil
 		}
-		
+
 		return nil, errors.New("format XML invalid sau incompatibil")
 	}
 
@@ -56,6 +56,7 @@ func ParseBody[T any](c *gin.Context) ([]T, error) {
 	// Dacă am ajuns aici, înseamnă că niciun format nu a mers
 	return nil, errors.New("nu s-au putut decoda datele (nici JSON, nici XML)")
 }
+
 func GeneratePassword(length int) (string, error) {
 
 	// Setul de caractere pe care îl vom folosi
