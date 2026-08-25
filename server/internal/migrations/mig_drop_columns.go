@@ -1,14 +1,15 @@
 package migrations
 
 import (
-	"log"
+	"fmt"
 
+	"github.com/victoryus84/gorders/internal/logger"
 	"gorm.io/gorm"
 )
 
 // DropUnusedColumns automatically detects and removes columns from DB that no longer exist in models
 func DropUnusedColumns(db *gorm.DB) error {
-	log.Println("\n🧹 Cleaning up orphaned columns from database...")
+	logger.LogInfo("\n🧹 Cleaning up orphaned columns from database...")
 
 	tables := GetAllModels()
 
@@ -30,7 +31,7 @@ func DropUnusedColumns(db *gorm.DB) error {
 		// Get columns from database
 		dbColumns, err := GetDBColumns(db, tableName)
 		if err != nil {
-			log.Printf("⚠️  Could not read table %s: %v\n", tableName, err)
+			logger.LogError(fmt.Sprintf("⚠️  Could not read table %s", tableName), err)
 			continue
 		}
 
@@ -39,9 +40,9 @@ func DropUnusedColumns(db *gorm.DB) error {
 			if !modelColumns[dbCol] {
 				// This column exists in DB but not in model - drop it
 				if err := migrator.DropColumn(table, dbCol); err != nil {
-					log.Printf("❌ Failed to drop column %s from %s: %v\n", dbCol, tableName, err)
+					logger.LogError(fmt.Sprintf("❌ Failed to drop column %s from %s:", dbCol, tableName), err)
 				} else {
-					log.Printf("✅ Dropped orphaned column: %s.%s\n", tableName, dbCol)
+					logger.LogInfo(fmt.Sprintf("✅ Dropped orphaned column: %s.%s\n", tableName, dbCol))
 					dropCount++
 				}
 			}
@@ -49,11 +50,10 @@ func DropUnusedColumns(db *gorm.DB) error {
 	}
 
 	if dropCount == 0 {
-		log.Println("✅ No orphaned columns found - database is clean!")
+		logger.LogInfo("✅ No orphaned columns found - database is clean!")
 	} else {
-		log.Printf("✅ Successfully removed %d orphaned column(s)\n", dropCount)
+		logger.LogInfo(fmt.Sprintf("✅ Successfully removed %d orphaned column(s)\n", dropCount))
 	}
-	log.Println()
-
+	logger.LogInfo("")
 	return nil
 }

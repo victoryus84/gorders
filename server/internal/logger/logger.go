@@ -89,3 +89,19 @@ func LogWarn(message string, fields ...zap.Field) {
 func LogDebug(message string, fields ...zap.Field) {
 	Logger.Debug(message, fields...)
 }
+
+// LogFatal logs a fatal error and stops the program (os.Exit(1))
+func LogFatal(message string, err error, fields ...zap.Field) {
+	Logger.Fatal(message,
+		append([]zap.Field{zap.Error(err)}, fields...)...,
+	)
+}
+// String este un wrapper pentru zap.String
+func String(key string, val string) zap.Field {
+    return zap.String(key, val)
+}
+
+// Int este un wrapper pentru zap.Int
+func Int(key string, val int) zap.Field {
+    return zap.Int(key, val)
+}

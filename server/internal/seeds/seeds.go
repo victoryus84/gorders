@@ -1,36 +1,37 @@
 package seeds
 
 import (
-	"log"
+	"fmt"
 	"sync"
 
+	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
 	"gorm.io/gorm"
 )
 
 func RunAllSeeds(db *gorm.DB) {
-    seeders := []struct {
-        name string
-        fn   func(*gorm.DB) error
-    }{
-        {"ClientTypes", SeedClientTypes},
-        {"VatTaxes", SeedVatTaxes},
-        {"IncomeTaxes", SeedIncomeTaxes},
-        {"Units", SeedUnits},
+	seeders := []struct {
+		name string
+		fn   func(*gorm.DB) error
+	}{
+		{"ClientTypes", SeedClientTypes},
+		{"VatTaxes", SeedVatTaxes},
+		{"IncomeTaxes", SeedIncomeTaxes},
+		{"Units", SeedUnits},
 		{"Channels", SeedChannels},
-    }
+	}
 
-    var wg sync.WaitGroup
-    for _, s := range seeders {
-        wg.Add(1)
-        go func(name string, f func(*gorm.DB) error) {
-            defer wg.Done()
-            if err := f(db); err != nil {
-                log.Printf("Error seeding %s: %v", name, err)
-            }
-        }(s.name, s.fn)
-    }
-    wg.Wait()
+	var wg sync.WaitGroup
+	for _, s := range seeders {
+		wg.Add(1)
+		go func(name string, f func(*gorm.DB) error) {
+			defer wg.Done()
+			if err := f(db); err != nil {
+				logger.LogError(fmt.Sprintf("Error seeding %s: %v", name), err)
+			}
+		}(s.name, s.fn)
+	}
+	wg.Wait()
 }
 
 // SeedClientTypes populates the ClientType table with initial data
@@ -49,14 +50,14 @@ func SeedClientTypes(db *gorm.DB) error {
 		if err := db.Where("name = ?", ct.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
 			if err := db.Create(&ct).Error; err != nil {
-				log.Printf("❌ Failed to seed ClientType '%s': %v\n", ct.Name, err)
+				logger.LogError(fmt.Sprintf("❌ Failed to seed ClientType '%s': %v\n", ct.Name), err)
 				return err
 			}
-			log.Printf("✅ Seeded ClientType: %s\n", ct.Name)
+			logger.LogInfo(fmt.Sprintf("✅ Seeded ClientType: %s\n", ct.Name))
 		} else if err != nil {
 			return err
 		} else {
-			log.Printf("⏭️ ClientType '%s' already exists\n", ct.Name)
+			logger.LogInfo(fmt.Sprintf("⏭️ ClientType '%s' already exists\n", ct.Name))
 		}
 	}
 
@@ -79,14 +80,14 @@ func SeedVatTaxes(db *gorm.DB) error {
 		if err := db.Where("name = ?", vatTax.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
 			if err := db.Create(&vatTax).Error; err != nil {
-				log.Printf("❌ Failed to seed VatTax '%s': %v\n", vatTax.Name, err)
+				logger.LogError(fmt.Sprintf("❌ Failed to seed VatTax '%s': %v\n", vatTax.Name), err)
 				return err
 			}
-			log.Printf("✅ Seeded VatTax: %s\n", vatTax.Name)
+			logger.LogInfo(fmt.Sprintf("✅ Seeded VatTax: %s\n", vatTax.Name))
 		} else if err != nil {
 			return err
 		} else {
-			log.Printf("⏭️ VatTax '%s' already exists\n", vatTax.Name)
+			logger.LogInfo(fmt.Sprintf("⏭️ VatTax '%s' already exists\n", vatTax.Name))
 		}
 	}
 	return nil
@@ -104,14 +105,14 @@ func SeedIncomeTaxes(db *gorm.DB) error {
 		if err := db.Where("name = ?", incomeTax.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
 			if err := db.Create(&incomeTax).Error; err != nil {
-				log.Printf("❌ Failed to seed IncomeTax '%s': %v\n", incomeTax.Name, err)
+				logger.LogError(fmt.Sprintf("❌ Failed to seed IncomeTax '%s': %v\n", incomeTax.Name), err)
 				return err
 			}
-			log.Printf("✅ Seeded IncomeTax: %s\n", incomeTax.Name)
+			logger.LogInfo(fmt.Sprintf("✅ Seeded IncomeTax: %s\n", incomeTax.Name))
 		} else if err != nil {
 			return err
 		} else {
-			log.Printf("⏭️ IncomeTax '%s' already exists\n", incomeTax.Name)
+			logger.LogInfo(fmt.Sprintf("⏭️ IncomeTax '%s' already exists\n", incomeTax.Name))
 		}
 	}
 	return nil
@@ -133,14 +134,14 @@ func SeedUnits(db *gorm.DB) error {
 		if err := db.Where("name = ?", unit.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
 			if err := db.Create(&unit).Error; err != nil {
-				log.Printf("❌ Failed to seed Unit '%s': %v\n", unit.Name, err)
+				logger.LogError(fmt.Sprintf("❌ Failed to seed Unit '%s': %v\n", unit.Name), err)
 				return err
 			}
-			log.Printf("✅ Seeded Unit: %s\n", unit.Name)
+			logger.LogInfo(fmt.Sprintf("✅ Seeded Unit: %s\n", unit.Name))
 		} else if err != nil {
 			return err
 		} else {
-			log.Printf("⏭️ Unit '%s' already exists\n", unit.Name)
+			logger.LogInfo(fmt.Sprintf("⏭️ Unit '%s' already exists\n", unit.Name))
 		}
 	}
 	return nil
@@ -160,14 +161,14 @@ func SeedChannels(db *gorm.DB) error {
 		if err := db.Where("name = ?", channel.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
 			if err := db.Create(&channel).Error; err != nil {
-				log.Printf("❌ Failed to seed Channel '%s': %v\n", channel.Name, err)
+				logger.LogError(fmt.Sprintf("❌ Failed to seed Channel '%s': %v\n", channel.Name), err)
 				return err
 			}
-			log.Printf("✅ Seeded Channel: %s\n", channel.Name)
+			logger.LogInfo(fmt.Sprintf("✅ Seeded Channel: %s\n", channel.Name))
 		} else if err != nil {
 			return err
 		} else {
-			log.Printf("⏭️ Channel '%s' already exists\n", channel.Name)
+			logger.LogInfo(fmt.Sprintf("⏭️ Channel '%s' already exists\n", channel.Name))
 		}
 	}
 	return nil

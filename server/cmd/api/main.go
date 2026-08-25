@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -15,7 +14,6 @@ import (
 	"github.com/victoryus84/gorders/internal/repository"
 	"github.com/victoryus84/gorders/internal/router"
 	"github.com/victoryus84/gorders/internal/service"
-	"go.uber.org/zap"
 )
 
 // Build flags set during compilation
@@ -26,19 +24,24 @@ var (
 )
 
 func main() {
-	_ = godotenv.Load() 
+	_ = godotenv.Load()
 	// Load configuration (singleton)
 	cfg := config.Load()
 
 	Version = cfg.Version
-    Commit  = cfg.Commit
+	Commit = cfg.Commit
 
 	if cfg.AppEnv == "production" {
-        fmt.Printf("⚠️ RUNNING IN PRODUCTION MODE (Version: %s, Commit: %s)\n", Version, Commit)
-    } else {
-        fmt.Printf("🛠️ Running in Development mode (Version: %s)\n", Version)
-    }
-	
+		logger.LogInfo("⚠️ RUNNING IN PRODUCTION MODE",
+			logger.String("version", Version), // Uite ce curat arată!
+			logger.String("commit", Commit),
+		)
+	} else {
+		logger.LogInfo("🛠️ Running in Development mode",
+			logger.String("version", Version),
+		)
+	}
+
 	// Pornim Producer-ul cu adresa din .env
 	kp := kafka.NewProducer(cfg.KafkaAddr)
 	defer kp.Close()
@@ -59,7 +62,7 @@ func main() {
 	// Create services
 	svc_user := service.NewUserService(rep, cfg)
 	svc_client := service.NewClientService(rep, cfg, kp)
-	svc_contract := service.NewContractService(rep, rep,cfg, kp)
+	svc_contract := service.NewContractService(rep, rep, cfg, kp)
 
 	logger.LogInfo("✅ All services initialized")
 
@@ -92,29 +95,35 @@ func main() {
 	router.SetupRoutes(r, allHandlers)
 
 	logger.LogInfo("🎯 Server starting",
-		zap.String("port", "8080"),
-		zap.String("env", cfg.AppEnv),
-		zap.String("version", Version),
-		zap.String("commit", Commit),
-		zap.String("buildTime", BuildTime),
+		logger.String("port", "8080"),
+		logger.String("env", cfg.AppEnv),
+		logger.String("version", Version),
+		logger.String("commit", Commit),
+		logger.String("buildTime", BuildTime),
 	)
 
 	// Start server
 	if err := r.Run(":8080"); err != nil {
-		logger.LogError("Server failed to start", err)
-		log.Fatal(err)
+		// Asta va scrie log-ul frumos în JSON (cu Zap) ȘI va opri serverul!
+		logger.LogFatal("Server failed to start", err)
 	}
 }
 
 // printBanner prints startup banner
 func printBanner() {
-	fmt.Println("")
-	fmt.Println("╔════════════════════════════════════════╗")
-	fmt.Println("║     🚀 GOrders Backend Server 🚀     ║")
-	fmt.Println("╠════════════════════════════════════════╣")
-	fmt.Printf("║  Version:  %-30s ║\n", Version)
-	fmt.Printf("║  Commit:   %-30s ║\n", Commit)
-	fmt.Printf("║  Built:    %-30s ║\n", BuildTime)
-	fmt.Println("╚════════════════════════════════════════╝")
-	fmt.Println("")
+	// 1. Folosim backticks (`) pentru a scrie pe mai multe rânduri 
+    // FĂRĂ să facem concatenări urâte. Sprintf rezolvă formatarea cu variabilele tale.
+    banner := fmt.Sprintf(`
+╔════════════════════════════════════════╗
+║     🚀 GOrders Backend Server 🚀       ║
+╠════════════════════════════════════════╣
+║  Version:  %-26s  ║
+║  Commit:   %-26s  ║
+║  Built:    %-26s  ║
+╚════════════════════════════════════════╝
+`, Version, Commit, BuildTime)
+
+    // 2. Acum avem un singur log. În development, va apărea cu verde "INFO" deasupra.
+    // Pe server, va fi un singur JSON curat.
+    logger.LogInfo(banner)
 }

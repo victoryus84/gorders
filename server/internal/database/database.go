@@ -1,32 +1,33 @@
 package database
 
 import (
-	"log"
 	"github.com/victoryus84/gorders/internal/config" // Importă pachetul tău de config
+	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/migrations"
 	"github.com/victoryus84/gorders/internal/seeds"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger" // Îl importăm doar ca să-i dăm comanda de "Mute"
 )
 
 // Connect inițializează conexiunea la baza de date
 func Connect(cfg *config.Config) *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Error), // Pentru debug: arată toate query-urile SQL
+		// 3. Folosim porecla "gormlogger" în loc de "logger"
+		Logger: gormlogger.Default.LogMode(gormlogger.Error),
 	})
+
 	if err != nil {
-		// În main e ok să folosim log.Fatal dacă baza e critică pentru aplicație
-		log.Fatal("❌ failed to connect database:", err)
+		logger.LogFatal("❌ failed to connect database", err)
 	}
-	log.Println("✅ Database connected")
+	logger.LogInfo("✅ Database connected")
 
 	// Migrate schema
 	if err := db.AutoMigrate(migrations.GetAllModels()...); err != nil {
-		log.Fatal("migration failed:", err)
+		logger.LogFatal("❌ migration failed", err)
 	}
-	log.Println("✅ Migration completed successfully")
+	logger.LogInfo("✅ Migration completed successfully")
 
 	// Analyze schema differences
 	migrations.AnalyzeSchemaSync(db)
@@ -34,13 +35,13 @@ func Connect(cfg *config.Config) *gorm.DB {
 
 	// Clean up orphaned columns
 	if err := migrations.DropUnusedColumns(db); err != nil {
-		log.Fatal("cleanup failed:", err)
+		logger.LogFatal("❌ cleanup failed", err)
 	}
-	log.Println("✅ Cleanup completed successfully")
+	logger.LogInfo("✅ Cleanup completed successfully")
 
 	// Seed initial data
 	seeds.RunAllSeeds(db)
-    log.Println("✅ Seeding completed")
+	logger.LogInfo("✅ Seeding completed")
 
 	return db
 }

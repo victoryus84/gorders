@@ -1,8 +1,9 @@
 package migrations
 
 import (
-	"log"
+	"fmt"
 
+	"github.com/victoryus84/gorders/internal/logger"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +29,8 @@ func GetDBColumns(db *gorm.DB, tableName string) ([]string, error) {
 
 // AnalyzeSchemaSync compares DB schema with models and reports discrepancies
 func AnalyzeSchemaSync(db *gorm.DB) {
-	log.Println("\n======= 🔍 DATABASE SCHEMA ANALYSIS =======")
+	// Aici ne folosim doar de mesaje statice
+	logger.LogInfo("\n======= 🔍 DATABASE SCHEMA ANALYSIS =======")
 
 	tables := GetAllModels()
 
@@ -36,7 +38,7 @@ func AnalyzeSchemaSync(db *gorm.DB) {
 		analyzeTable(db, table)
 	}
 
-	log.Println("\n========================================")
+	logger.LogInfo("\n========================================")
 }
 
 func analyzeTable(db *gorm.DB, table interface{}) {
@@ -58,7 +60,7 @@ func analyzeTable(db *gorm.DB, table interface{}) {
 	// Get columns from database
 	dbColumns, err := GetDBColumns(db, tableName)
 	if err != nil {
-		log.Printf("❌ Error reading table %s: %v\n", tableName, err)
+		logger.LogFatal(fmt.Sprintf("❌ Error reading table %s", tableName), err)
 		return
 	}
 
@@ -84,25 +86,24 @@ func analyzeTable(db *gorm.DB, table interface{}) {
 	}
 
 	// Print report
-if len(orphanedColumns) == 0 && len(missingColumns) == 0 {
-		// Acum numerele vor fi identice (ex: 12 coloane la 12 coloane)
-		log.Printf("✅ %-20s - SYNCED (%d physical columns)\n", 
-            tableName, len(dbColumnsMap))
+	if len(orphanedColumns) == 0 && len(missingColumns) == 0 {
+		msg := fmt.Sprintf("✅ %-20s - SYNCED (%d physical columns)", tableName, len(dbColumnsMap))
+		logger.LogInfo(msg)
 	} else {
-		log.Printf("\n⚠️  TABLE: %s\n", tableName)
-		log.Printf("   Physical DB: %d | Physical Model: %d\n", len(dbColumnsMap), len(modelColumns))
+		msg := fmt.Sprintf("⚠️  TABLE: %s (DB: %d | Model: %d)", tableName, len(dbColumnsMap), len(modelColumns))
+		logger.LogWarn(msg)
 
 		if len(orphanedColumns) > 0 {
-			log.Printf("   🗑️  ORPHANED (Există în DB, dar NU în Model):\n")
+			logger.LogWarn("  🗑️  ORPHANED (Există în DB, dar NU în Model):")
 			for _, col := range orphanedColumns {
-				log.Printf("      - %s\n", col)
+				logger.LogWarn(fmt.Sprintf("      - %s", col))
 			}
 		}
 
 		if len(missingColumns) > 0 {
-			log.Printf("   ❌ MISSING (Lipsesc din DB, trebuie create):\n")
+			logger.LogWarn("  ❌ MISSING (Lipsesc din DB, trebuie create):")
 			for _, col := range missingColumns {
-				log.Printf("      - %s\n", col)
+				logger.LogWarn(fmt.Sprintf("      - %s", col))
 			}
 		}
 	}
@@ -110,7 +111,7 @@ if len(orphanedColumns) == 0 && len(missingColumns) == 0 {
 
 // PrintSyncCommands generates DROP COLUMN commands for cleanup
 func PrintSyncCommands(db *gorm.DB) {
-	log.Println("\n======= 📋 AUTO-FIX COMMANDS =======")
+	logger.LogInfo("\n======= 📋 AUTO-FIX COMMANDS =======")
 
 	tables := GetAllModels()
 
@@ -131,17 +132,18 @@ func PrintSyncCommands(db *gorm.DB) {
 		// Get columns from database
 		dbColumns, err := GetDBColumns(db, tableName)
 		if err != nil {
+			logger.LogError(fmt.Sprintf("❌ Error reading table %s", tableName), err)
 			continue
 		}
 
 		// Find orphaned columns
 		for _, col := range dbColumns {
 			if !modelColumns[col] {
-				log.Printf("db.Migrator().DropColumn(&models.%s{}, \"%s\")\n",
-					TableNameToModel(tableName), col)
+				cmd := fmt.Sprintf("db.Migrator().DropColumn(&models.%s{}, \"%s\")", TableNameToModel(tableName), col)
+				logger.LogInfo(cmd)
 			}
 		}
 	}
 
-	log.Println("\n====================================")
+	logger.LogInfo("\n====================================")
 }
