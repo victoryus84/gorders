@@ -32,11 +32,13 @@ func main() {
 	Commit = cfg.Commit
 
 	if cfg.AppEnv == "production" {
+		logger.Init("info")
 		logger.LogInfo("⚠️ RUNNING IN PRODUCTION MODE",
 			logger.String("version", Version), // Uite ce curat arată!
 			logger.String("commit", Commit),
 		)
 	} else {
+		logger.Init("debug")
 		logger.LogInfo("🛠️ Running in Development mode",
 			logger.String("version", Version),
 		)
@@ -111,9 +113,9 @@ func main() {
 
 // printBanner prints startup banner
 func printBanner() {
-	// 1. Folosim backticks (`) pentru a scrie pe mai multe rânduri 
-    // FĂRĂ să facem concatenări urâte. Sprintf rezolvă formatarea cu variabilele tale.
-    banner := fmt.Sprintf(`
+	// 1. Folosim backticks (`) pentru a scrie pe mai multe rânduri
+	// FĂRĂ să facem concatenări urâte. Sprintf rezolvă formatarea cu variabilele tale.
+	banner := fmt.Sprintf(`
 ╔════════════════════════════════════════╗
 ║     🚀 GOrders Backend Server 🚀       ║
 ╠════════════════════════════════════════╣
@@ -123,7 +125,7 @@ func printBanner() {
 ╚════════════════════════════════════════╝
 `, Version, Commit, BuildTime)
 
-    // 2. Acum avem un singur log. În development, va apărea cu verde "INFO" deasupra.
-    // Pe server, va fi un singur JSON curat.
-    logger.LogInfo(banner)
+	// 2. Acum avem un singur log. În development, va apărea cu verde "INFO" deasupra.
+	// Pe server, va fi un singur JSON curat.
+	logger.LogInfo(banner)
 }
