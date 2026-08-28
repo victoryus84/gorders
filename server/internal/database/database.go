@@ -5,10 +5,15 @@ import (
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/migrations"
 	"github.com/victoryus84/gorders/internal/seeds"
+	"go.uber.org/fx" // 1. Infiltrarea Uber Fx
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger" // Îl importăm doar ca să-i dăm comanda de "Mute"
 )
+
+// 2. Modulul bazei de date pe care îl vom folosi în main.go
+// Fx vede că funcția Connect returnează un *gorm.DB și îl va pune la dispoziția tuturor.
+var Module = fx.Provide(Connect)
 
 // Connect inițializează conexiunea la baza de date
 func Connect(cfg *config.Config) *gorm.DB {

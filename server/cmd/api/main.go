@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -11,12 +13,13 @@ import (
 	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/middleware"
-	"github.com/victoryus84/gorders/internal/repository"
 	"github.com/victoryus84/gorders/internal/router"
 	"github.com/victoryus84/gorders/internal/service"
+	"go.uber.org/fx"
+	"gorm.io/gorm"
 )
 
-// Build flags set during compilation
+// Build flags
 var (
 	Version   = "dev"
 	Commit    = "unknown"
@@ -24,8 +27,9 @@ var (
 )
 
 func main() {
+	// 1. INIȚIALIZĂRI PRE-FX (Config & Logger)
+	// Vrem ca Zap să pornească ÎNAINTE de Fx, ca să putem loga eventualele erori de start.
 	_ = godotenv.Load()
-	// Load configuration (singleton)
 	cfg := config.Load()
 
 	Version = cfg.Version
@@ -33,99 +37,127 @@ func main() {
 
 	if cfg.AppEnv == "production" {
 		logger.Init("info")
-		logger.LogInfo("⚠️ RUNNING IN PRODUCTION MODE",
-			logger.String("version", Version), // Uite ce curat arată!
-			logger.String("commit", Commit),
-		)
+		logger.LogInfo("⚠️ RUNNING IN PRODUCTION MODE", logger.String("version", Version), logger.String("commit", Commit))
 	} else {
 		logger.Init("debug")
-		logger.LogInfo("🛠️ Running in Development mode",
-			logger.String("version", Version),
-		)
+		logger.LogInfo("🛠️ Running in Development mode", logger.String("version", Version))
 	}
-
-	// Pornim Producer-ul cu adresa din .env
-	kp := kafka.NewProducer(cfg.KafkaAddr)
-	defer kp.Close()
-
-	// Initialize structured logging
-	logger.Init(cfg.LogLevel)
 	defer logger.Logger.Sync()
 
-	// Print startup banner
 	printBanner()
 
-	// Connect to database
-	db := database.Connect(cfg)
+	// 2. MAGIA UBER FX
+	fx.New(
+		// --- A. PROVIDERS (Toate componentele tale) ---
+		fx.Provide(
+			// 1. Configurația (îi dăm direct variabila deja încărcată mai sus)
+			func() *config.Config { return cfg },
 
-	// Create repository
-	rep := repository.NewRepository(db)
+			// 2. Baza de date
+			database.Connect,
 
-	// Create services
-	svc_user := service.NewUserService(rep, cfg)
-	svc_client := service.NewClientService(rep, cfg, kp)
-	svc_contract := service.NewContractService(rep, rep, cfg, kp)
+			// 3. Kafka (Cu tot cu funcția de închidere la oprirea serverului!)
+			func(lc fx.Lifecycle, c *config.Config) *kafka.Producer {
+				kp := kafka.NewProducer(c.KafkaAddr)
+				lc.Append(fx.Hook{
+					OnStop: func(ctx context.Context) error {
+						logger.LogInfo("🛑 Închidem conexiunea Kafka...")
+						kp.Close()
+						return nil
+					},
+				})
+				return kp
+			},
 
-	logger.LogInfo("✅ All services initialized")
+			// 4. Repositories & Services
+			service.NewUserService,
+			service.NewClientService,
+			service.NewContractService,
 
-	// Setup Gin router
-	if cfg.AppEnv == "production" {
-		gin.SetMode(gin.ReleaseMode)
-	}
+			// 5. Handlers (Micile ajustări unde avem nevoie de mai mulți parametri)
+			func(db *gorm.DB) *handler.CoreHandler {
+				// CoreHandler cere Version și Commit, care sunt variabile globale aici
+				return handler.NewCoreHandler(db, Version, Commit)
+			},
+			handler.NewUserHandler,
+			handler.NewClientHandler,
+			handler.NewContractHandler,
 
-	r := gin.New()
+			// 6. Grupăm toți handlerii în structura ta "Handlers" (ca să o putem da la Router)
+			func(core *handler.CoreHandler, user *handler.UserHandler, client *handler.ClientHandler, contract *handler.ContractHandler) *handler.Handlers {
+				return &handler.Handlers{
+					Core:     core,
+					User:     user,
+					Client:   client,
+					Contract: contract,
+				}
+			},
 
-	// Apply global middleware in order
-	r.Use(middleware.RequestLogging()) // Logging with trace ID
-	r.Use(middleware.PanicRecovery())  // Panic recovery
-	r.Use(middleware.CORS())           // CORS headers
-	r.Use(middleware.RateLimit())      // Rate limiting
+			// 7. Gin Engine (Router-ul principal cu Middlewares)
+			func(c *config.Config) *gin.Engine {
+				if c.AppEnv == "production" {
+					gin.SetMode(gin.ReleaseMode)
+				}
+				r := gin.New()
+				r.Use(middleware.RequestLogging())
+				r.Use(middleware.PanicRecovery())
+				r.Use(middleware.CORS())
+				r.Use(middleware.RateLimit())
+				return r
+			},
+		),
 
-	// Core handlers
-	hdl_core := handler.NewCoreHandler(db, Version, Commit)
-	hdl_user := handler.NewUserHandler(svc_user)
-	hdl_client := handler.NewClientHandler(svc_client)
-	hdl_contract := handler.NewContractHandler(svc_contract)
+		// --- B. INVOKE (Pornirea efectivă) ---
+		fx.Invoke(startHTTPServer),
+	).Run()
+}
 
-	allHandlers := &handler.Handlers{
-		Core:     hdl_core,
-		User:     hdl_user,
-		Client:   hdl_client,
-		Contract: hdl_contract,
-	}
+// Această funcție trage automat routerul, handlerii și config-ul din cutia Fx
+func startHTTPServer(lc fx.Lifecycle, r *gin.Engine, allHandlers *handler.Handlers, cfg *config.Config) {
 	// Setup API routes
 	router.SetupRoutes(r, allHandlers)
 
-	logger.LogInfo("🎯 Server starting",
-		logger.String("port", "8080"),
-		logger.String("env", cfg.AppEnv),
-		logger.String("version", Version),
-		logger.String("commit", Commit),
-		logger.String("buildTime", BuildTime),
-	)
-
-	// Start server
-	if err := r.Run(":8080"); err != nil {
-		// Asta va scrie log-ul frumos în JSON (cu Zap) ȘI va opri serverul!
-		logger.LogFatal("Server failed to start", err)
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
 	}
+
+	// Îi spunem lui Fx cum să pornească serverul fără să blocheze restul proceselor
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			logger.LogInfo("🎯 Server starting",
+				logger.String("port", "8080"),
+				logger.String("env", cfg.AppEnv),
+				logger.String("version", Version),
+				logger.String("commit", Commit),
+				logger.String("buildTime", BuildTime),
+			)
+
+			go func() {
+				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					logger.LogFatal("Server failed to start", err)
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			logger.LogInfo("🛑 Oprim serverul HTTP grațios...")
+			return srv.Shutdown(ctx)
+		},
+	})
 }
 
 // printBanner prints startup banner
 func printBanner() {
-	// 1. Folosim backticks (`) pentru a scrie pe mai multe rânduri
-	// FĂRĂ să facem concatenări urâte. Sprintf rezolvă formatarea cu variabilele tale.
 	banner := fmt.Sprintf(`
 ╔════════════════════════════════════════╗
-║     🚀 GOrders Backend Server 🚀       ║
+║     🚀 GOrders Backend Server 🚀      ║
 ╠════════════════════════════════════════╣
-║  Version:  %-26s  ║
-║  Commit:   %-26s  ║
-║  Built:    %-26s  ║
+║  Version:  %-26s  					 ║
+║  Commit:   %-26s  					 ║
+║  Built:    %-26s  					 ║
 ╚════════════════════════════════════════╝
 `, Version, Commit, BuildTime)
 
-	// 2. Acum avem un singur log. În development, va apărea cu verde "INFO" deasupra.
-	// Pe server, va fi un singur JSON curat.
 	logger.LogInfo(banner)
 }
