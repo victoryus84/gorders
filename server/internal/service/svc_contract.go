@@ -27,11 +27,11 @@ type ContractService interface {
 }
 
 type contractService struct {
-	rep       ContractRepository
+	rep       repository.ContractRepository
 	clientRep repository.ClientRepository
 }
 
-func NewContractService(rep ContractRepository, clientRep repository.ClientRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
+func NewContractService(rep repository.ContractRepository, clientRep repository.ClientRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
 	return &contractService{rep: rep, clientRep: clientRep}
 }
 
