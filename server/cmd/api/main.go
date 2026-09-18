@@ -46,7 +46,7 @@ func main() {
 
 	// 2. MAGIA UBER FX
 	fx.New(
-		// --- A. PROVIDERS (Toate componentele tale) ---
+		// --- A. PROVIDERS INDIVIDUALI (Config, Baza de date, Kafka) ---
 		fx.Provide(
 			// 1. Configurația (îi dăm direct variabila deja încărcată mai sus)
 			func() *config.Config { return cfg },
@@ -66,12 +66,11 @@ func main() {
 				})
 				return kp
 			},
-
-        	repository.Module,
-        	service.Module,
-        	handler.Module,
 		),
-
+		// --- B. MODULELE (Le punem DIRECT în fx.New, NU în fx.Provide) ---
+		repository.Module,
+		service.Module,
+		handler.Module,	
 		// --- B. INVOKE (Pornirea efectivă) ---
 		fx.Invoke(startHTTPServer),
 	).Run()
