@@ -6,21 +6,34 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type ContractRepository struct {
+// 1. INTERFAȚA PUBLICĂ (Fără steluță!)
+type ContractRepository interface {
+	// Contract methods
+	CreateContract(contract *models.Contract) error
+	UpsertContractBatch(contracts []*models.Contract, batchSize int) error
+	FindContractsByClientID(clientID uint) ([]models.Contract, error)
+	FindContractByID(id uint) (*models.Contract, error)
+	// Contract Address methods
+	CreateContractAddress(addr *models.ContractAddress) error
+	FindContractAddressByID(id uint) (*models.ContractAddress, error)
+}
+
+// 2. STRUCTURA PRIVATĂ (Cu "c" mic)
+type contractRepository struct {
 	db *gorm.DB
 }
 
 // 2. Iată CONSTRUCTORUL de care are nevoie Uber Fx!
-func NewContractRepository(db *gorm.DB) *ContractRepository {
-	return &ContractRepository{db: db}
+func NewContractRepository(db *gorm.DB) ContractRepository {
+	return &contractRepository{db: db}
 }
 
 // Contract methods
-func (rep *ContractRepository) CreateContract(contract *models.Contract) error {
+func (rep *contractRepository) CreateContract(contract *models.Contract) error {
 	return rep.db.Create(contract).Error
 }
 
-func (rep *ContractRepository) UpsertContractBatch(contracts []*models.Contract, batchSize int) error {
+func (rep *contractRepository) UpsertContractBatch(contracts []*models.Contract, batchSize int) error {
 	regulaConflict := clause.OnConflict{
 		Columns: []clause.Column{
 			{Name: "sync_id"}, // <-- Baza de date caută dubluri după asta!
@@ -33,7 +46,7 @@ func (rep *ContractRepository) UpsertContractBatch(contracts []*models.Contract,
 	return rep.db.Clauses(regulaConflict).CreateInBatches(contracts, batchSize).Error
 }
 
-func (rep *ContractRepository) FindContractByID(id uint) (*models.Contract, error) {
+func (rep *contractRepository) FindContractByID(id uint) (*models.Contract, error) {
 	var contract models.Contract
 	// Încercăm să găsim contractul după ID
 	err := rep.db.First(&contract, id).Error
@@ -46,17 +59,17 @@ func (rep *ContractRepository) FindContractByID(id uint) (*models.Contract, erro
 	return &contract, nil
 }
 
-func (rep *ContractRepository) FindContractsByClientID(clientID uint) ([]models.Contract, error) {
+func (rep *contractRepository) FindContractsByClientID(clientID uint) ([]models.Contract, error) {
 	var contracts []models.Contract
 	err := rep.db.Where("client_id = ?", clientID).Find(&contracts).Error
 	return contracts, err
 }
 
-func (rep *ContractRepository) CreateContractAddress(addr *models.ContractAddress) error {
+func (rep *contractRepository) CreateContractAddress(addr *models.ContractAddress) error {
 	return rep.db.Create(addr).Error
 }
 
-func (rep *ContractRepository) FindContractAddressByID(id uint) (*models.ContractAddress, error) {
+func (rep *contractRepository) FindContractAddressByID(id uint) (*models.ContractAddress, error) {
 	var addr models.ContractAddress
 	err := rep.db.First(&addr, id).Error
 	// 1. Dacă a apărut o eroare (nu există în DB sau e picat serverul)
