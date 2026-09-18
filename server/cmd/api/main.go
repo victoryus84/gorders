@@ -14,6 +14,7 @@ import (
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/service"
 	"github.com/victoryus84/gorders/internal/repository"
+	"github.com/victoryus84/gorders/internal/middleware"
 	"go.uber.org/fx"
 )
 
@@ -66,6 +67,18 @@ func main() {
 				})
 				return kp
 			},
+			// 4. 🔥 Aici lipsea Gin Engine! Fx avea nevoie de el pentru funcțiile RegisterRoutes
+			func(cfg *config.Config) *gin.Engine {
+				if cfg.AppEnv == "production" {
+					gin.SetMode(gin.ReleaseMode)
+				}
+				gin := gin.New()
+				gin.Use(middleware.RequestLogging())
+				gin.Use(middleware.PanicRecovery())
+				gin.Use(middleware.CORS())
+				gin.Use(middleware.RateLimit())
+				return gin
+	},
 		),
 		// --- B. MODULELE (Le punem DIRECT în fx.New, NU în fx.Provide) ---
 		repository.Module,
