@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"github.com/victoryus84/gorders/internal/service"
 )
 
 // UserService definește doar metodele de care are nevoie acest handler.
@@ -13,11 +14,11 @@ type UserService interface {
 }
 
 type UserHandler struct {
-	service UserService
+	service service.UserService
 }
 
 // NewUserHandler creează o instanță nouă a handler-ului
-func NewUserHandler(s UserService) *UserHandler {
+func NewUserHandler(s service.UserService) *UserHandler {
 	return &UserHandler{service: s}
 }
 
