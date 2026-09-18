@@ -8,30 +8,34 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/models"
+	"github.com/victoryus84/gorders/internal/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserRepository interface {
-	CreateUser(user *models.User) error
-	FindUserByEmail(email string) (*models.User, error)
+// Interfața publică a serviciului
+type UserService interface {
+	Signup(email, password, role string) error
+	Login(email, password string) (string, error)
 }
 
-type UserService struct {
-	repo      UserRepository
-	cfg       *config.Config
-	jwtSecret string
+// Structura privată cu câmpurile necesare
+type userService struct {
+	rep repository.UserRepository // l-am numit 'repo' pentru că așa îl folosești în metode
+	cfg  *config.Config            // am adăugat cfg aici ca să poată fi salvat
 }
 
-func NewUserService(repo UserRepository, cfg *config.Config) *UserService {
-	return &UserService{
-		repo:      repo,
-		cfg:       cfg,
-		jwtSecret: cfg.JWTSecret,
+// Constructorul
+func NewUserService(rep repository.UserRepository, cfg *config.Config) UserService {
+	return &userService{
+		rep: rep,
+		cfg:  cfg,
 	}
 }
 
-func (s *UserService) Signup(email, password, role string) error {
-	if !s.cfg.AllowSignup {
+// METODELE - toate folosesc receiver-ul (s *userService) cu "u" mic!
+
+func (svc *userService) Signup(email, password, role string) error {
+	if !svc.cfg.AllowSignup {
 		return fmt.Errorf("înregistrarea utilizatorilor este dezactivată")
 	}
 
@@ -45,11 +49,13 @@ func (s *UserService) Signup(email, password, role string) error {
 		Password: string(hashedPassword),
 		Role:     map[bool]string{true: "admin", false: "user"}[strings.ToLower(role) == "trueadmin"],
 	}
-	return s.repo.CreateUser(user)
+	
+	// Folosim svc.rep
+	return svc.rep.CreateUser(user)
 }
 
-func (s *UserService) Login(email, password string) (string, error) {
-	user, err := s.repo.FindUserByEmail(email)
+func (svc *userService) Login(email, password string) (string, error) {
+	user, err := svc.rep.FindUserByEmail(email)
 	if err != nil {
 		return "", err
 	}
@@ -64,5 +70,7 @@ func (s *UserService) Login(email, password string) (string, error) {
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
 	})
 
-	return token.SignedString([]byte(s.jwtSecret))
+	// Am presupus că JWTSecret se află în config-ul tău.
+	// Dacă se numește altfel în config.Config, modifică 'JWTSecret' cu numele real.
+	return token.SignedString([]byte(svc.cfg.JWTSecret))
 }
