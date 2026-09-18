@@ -8,6 +8,7 @@ import (
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/service"
 	"github.com/victoryus84/gorders/internal/utils"
+	"github.com/victoryus84/gorders/internal/middleware"
 )
 
 type ClientHandler struct {
@@ -116,3 +117,14 @@ func (hdl *ClientHandler) CreateClientAddress(c *gin.Context) {
 	c.JSON(http.StatusCreated, result)
 }
 
+func RegisterClientRoutes(rte *gin.Engine, hdl *ClientHandler) {
+	clients := rte.Group("/api/v1/clients")
+	clients.Use(middleware.AuthJWT())
+	{
+		clients.GET("", hdl.GetClients)
+		clients.POST("", hdl.CreateClient)
+		clients.POST("/groups", hdl.CreateClientGroup)
+		clients.GET("/search", hdl.SearchClients)
+		clients.POST("/addresses", hdl.CreateClientAddress)
+	}
+}

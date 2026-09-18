@@ -18,39 +18,33 @@ type UserHandler struct {
 }
 
 // NewUserHandler creează o instanță nouă a handler-ului
-func NewUserHandler(s service.UserService) *UserHandler {
-	return &UserHandler{service: s}
-}
-
-// RegisterRoutes înregistrează rutele de autentificare
-func (h *UserHandler) RegisterRoutes(router *gin.Engine) {
-	router.POST("/signup", h.Signup)
-	router.POST("/login", h.Login)
+func NewUserHandler(svc service.UserService) *UserHandler {
+	return &UserHandler{service: svc}
 }
 
 // Signup gestionează înregistrarea utilizatorilor
-func (h *UserHandler) Signup(c *gin.Context) {
+func (hdl *UserHandler) Signup(ctx *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required,min=6"`
 		Role     string `json:"role"`
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.service.Signup(req.Email, req.Password, req.Role); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := hdl.service.Signup(req.Email, req.Password, req.Role); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User created"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "User created"})
 }
 
 // Login gestionează autentificarea
-func (h *UserHandler) Login(c *gin.Context) {
+func (hdl *UserHandler) Login(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email" xml:"email" binding:"required"`
 		Password string `json:"password" xml:"password" binding:"required"`
@@ -59,16 +53,21 @@ func (h *UserHandler) Login(c *gin.Context) {
 	// Folosim ParseBody (presupunând că e un utilitar global în pkg/utils sau similar)
 	// Dacă nu ai ParseBody definit încă aici, poți folosi c.ShouldBind
 	var req LoginReq
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Date invalide"})
+	if err := ctx.ShouldBind(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Date invalide"})
 		return
 	}
 
-	token, err := h.service.Login(req.Email, req.Password)
+	token, err := hdl.service.Login(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	ctx.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func RegisterUserRoutes(rte *gin.Engine, hdl *UserHandler) {
+	rte.POST("/signup", hdl.Signup)
+	rte.POST("/login", hdl.Login)
 }

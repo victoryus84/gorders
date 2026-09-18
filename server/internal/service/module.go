@@ -9,5 +9,5 @@ var Module = fx.Provide(
 	NewUserService,
 	NewClientService,
 	NewContractService,
-	// NewProductService, // <-- Așa de simplu va fi în viitor
+	NewProductService,
 )

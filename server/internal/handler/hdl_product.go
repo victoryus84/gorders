@@ -6,7 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/service"
-	"github.com/victoryus84/gorders/internal/utils" // [CORECȚIE 1]: Am adăugat importul!
+	"github.com/victoryus84/gorders/internal/utils" 	
+	"github.com/victoryus84/gorders/internal/middleware"
 )
 
 type ProductHandler struct {
@@ -55,4 +56,14 @@ func (hdl *ProductHandler) GetProducts(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, products)
+}
+
+func RegisterProductRoutes(r *gin.Engine, h *ProductHandler) {
+	products := r.Group("/api/v1/products")
+	products.Use(middleware.AuthJWT())
+	{
+		products.GET("", h.GetProducts)
+		products.POST("", h.CreateProduct)
+		products.POST("/groups", h.CreateProductGroup)
+	}
 }

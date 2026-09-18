@@ -12,11 +12,9 @@ import (
 	"github.com/victoryus84/gorders/internal/handler"
 	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/logger"
-	"github.com/victoryus84/gorders/internal/middleware"
-	"github.com/victoryus84/gorders/internal/router"
 	"github.com/victoryus84/gorders/internal/service"
+	"github.com/victoryus84/gorders/internal/repository"
 	"go.uber.org/fx"
-	"gorm.io/gorm"
 )
 
 // Build flags
@@ -69,42 +67,9 @@ func main() {
 				return kp
 			},
 
-			// 4. Repositories & Services
-			service.NewUserService,
-			service.NewClientService,
-			service.NewContractService,
-
-			// 5. Handlers (Micile ajustări unde avem nevoie de mai mulți parametri)
-			func(db *gorm.DB) *handler.CoreHandler {
-				// CoreHandler cere Version și Commit, care sunt variabile globale aici
-				return handler.NewCoreHandler(db, Version, Commit)
-			},
-			handler.NewUserHandler,
-			handler.NewClientHandler,
-			handler.NewContractHandler,
-
-			// 6. Grupăm toți handlerii în structura ta "Handlers" (ca să o putem da la Router)
-			func(core *handler.CoreHandler, user *handler.UserHandler, client *handler.ClientHandler, contract *handler.ContractHandler) *handler.Handlers {
-				return &handler.Handlers{
-					Core:     core,
-					User:     user,
-					Client:   client,
-					Contract: contract,
-				}
-			},
-
-			// 7. Gin Engine (Router-ul principal cu Middlewares)
-			func(c *config.Config) *gin.Engine {
-				if c.AppEnv == "production" {
-					gin.SetMode(gin.ReleaseMode)
-				}
-				r := gin.New()
-				r.Use(middleware.RequestLogging())
-				r.Use(middleware.PanicRecovery())
-				r.Use(middleware.CORS())
-				r.Use(middleware.RateLimit())
-				return r
-			},
+        	repository.Module,
+        	service.Module,
+        	handler.Module,
 		),
 
 		// --- B. INVOKE (Pornirea efectivă) ---
@@ -112,13 +77,12 @@ func main() {
 	).Run()
 }
 
-// Această funcție trage automat routerul, handlerii și config-ul din cutia Fx
-func startHTTPServer(lc fx.Lifecycle, r *gin.Engine, allHandlers *handler.Handlers, cfg *config.Config) {
-	// Setup API routes
-	router.SetupRoutes(r, allHandlers)
+func startHTTPServer(lc fx.Lifecycle, r *gin.Engine, cfg *config.Config) {
+	// ❌ Nu mai avem nevoie de router.SetupRoutes(r, allHandlers)
+	// Rutele sunt deja înregistrate de funcțiile Register*Routes din module.go!
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":8080", // Opțional: poți trage și portul din cfg.AppPort dacă îl ai
 		Handler: r,
 	}
 
@@ -128,9 +92,8 @@ func startHTTPServer(lc fx.Lifecycle, r *gin.Engine, allHandlers *handler.Handle
 			logger.LogInfo("🎯 Server starting",
 				logger.String("port", "8080"),
 				logger.String("env", cfg.AppEnv),
-				logger.String("version", Version),
+				logger.String("version", Version), // Dacă Version nu e global, îl poți pune în config
 				logger.String("commit", Commit),
-				logger.String("buildTime", BuildTime),
 			)
 
 			go func() {

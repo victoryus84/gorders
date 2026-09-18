@@ -8,6 +8,7 @@ import (
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/service"
 	"github.com/victoryus84/gorders/internal/utils"
+	"github.com/victoryus84/gorders/internal/middleware"
 )
 
 type ContractHandler struct {
@@ -77,4 +78,13 @@ func (hdl *ContractHandler) parseID(c *gin.Context, paramName string) (uint, boo
 		return 0, false
 	}
 	return uint(id), true
+}
+
+func RegisterContractRoutes(r *gin.Engine, h *ContractHandler) {
+	contracts := r.Group("/api/v1/contracts")
+	contracts.Use(middleware.AuthJWT())
+	{
+		contracts.POST("", h.CreateContract)
+		contracts.GET("/:client_id", h.GetContractsByClientID)
+	}
 }
