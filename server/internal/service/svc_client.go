@@ -11,30 +11,8 @@ import (
 	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
+	"github.com/victoryus84/gorders/internal/repository"
 )
-
-// Client repository-related database operations
-type ClientRepository interface {
-	// Client methods
-	CreateClient(client *models.Client) error
-	UpsertClient(client *models.Client) error
-	UpsertClientsBatch(clients []*models.Client, batchSize int) error
-	FindClientByCode(code string) (*models.Client, error)
-	FindClientByFiscalID(fiscalID string) (*models.Client, error)
-	GetFirst1000Clients() ([]models.Client, error)
-	FindClientsByQuery(query string) ([]models.Client, error)
-	FindClientByID(id uint) (*models.Client, error)
-	FindAllClientCodesMap() (map[string]uint, error)
-	// Group client methods
-	CreateClientGroup(group *models.ClientGroup) error
-	UpsertClientGroup(group *models.ClientGroup) error
-	FindClientGroupByName(name string) (*models.ClientGroup, error)
-	FindClientGroupByCode(code string) (*models.ClientGroup, error)
-	GetAllClientGroups() ([]models.ClientGroup, error)
-	// Address client methods
-	CreateClientAddress(addr *models.ClientAddress) error
-	UpsertClientsAddressBatch(addr []*models.ClientAddress, batchSize int) error
-}
 
 // Aici pui toate metodele pe care vrei să le folosească Handler-ul
 type ClientService interface {
@@ -46,21 +24,22 @@ type ClientService interface {
 	SearchClientByID(id uint) (*models.Client, error)
 }
 
-// 2. Facem structura PRIVATĂ (schimbăm 'C' mare în 'c' mic)
+// 2. Facem structura PRIVATĂ
 type clientService struct {
-	rep ClientRepository
+	rep repository.ClientRepository
 	cfg *config.Config
 	kfk *kafka.Producer
 }
 
 func NewClientService(
-	rep ClientRepository,
+	rep repository.ClientRepository, // <-- Am adăugat prefixul repository.
 	cfg *config.Config,
 	kfk *kafka.Producer) ClientService {
+	
 	return &clientService{
 		rep: rep,
 		cfg: cfg,
-		kfk: kfk}
+		kfk: kfk} // Același stil compact și frumos
 }
 
 // ProcessClientImport - Logica masivă de import pe care am scos-o din Handler

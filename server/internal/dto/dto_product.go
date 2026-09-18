@@ -1,11 +1,20 @@
 package dto
 
 type ProductDTO struct {
-	SyncID string  `json:"sync_id" xml:"sync_id"`
-	Number string  `json:"number" xml:"number"`
-	Name   string  `json:"name" xml:"name" binding:"required"`
-	Date   string  `json:"date" xml:"date"` // Format YYYY-MM-DD
-	Amount float64 `json:"amount" xml:"amount"`
-	Status string  `json:"status" xml:"status"`
-	Code   string  `json:"code" xml:"code" binding:"required"` // client code
+	SyncID 		string `json:"sync_id" xml:"sync_id"` // optional field for synchronization purposes
+	Code   		string `json:"code" xml:"code" binding:"required"` // product code
+	Name   		string `json:"name" xml:"name" binding:"required"`
+	Description string `json:"description,omitempty" xml:"description,omitempty"`
+	Article 	string `json:"article,omitempty" xml:"article,omitempty"`
+	Unit        string `json:"unit" xml:"unit" binding:"required"`
+	VatTax	    *float64 `json:"vat_tax" xml:"vat_tax" binding:"required"`
+	VatCode 	string `json:"vat_code" xml:"vat_code" binding:"required"`
+}
+
+type ProductGroupDTO struct {
+	SyncID      string  `json:"sync_id" xml:"sync_id"`
+	Code        string `json:"code" xml:"code" binding:"required"`
+	Name        string `json:"name" xml:"name" binding:"required"`
+	Description string `json:"description,omitempty" xml:"description,omitempty"`
+	ParentCode  string `json:"parent_code,omitempty" xml:"parent_code,omitempty"`
 }

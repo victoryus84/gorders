@@ -8,6 +8,7 @@ import (
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/models"
+	"github.com/victoryus84/gorders/internal/repository"
 )
 
 // ContractRepository - Ce așteptăm de la baza de date
@@ -27,10 +28,10 @@ type ContractService interface {
 
 type contractService struct {
 	rep       ContractRepository
-	clientRep ClientRepository
+	clientRep repository.ClientRepository
 }
 
-func NewContractService(rep ContractRepository, clientRep ClientRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
+func NewContractService(rep ContractRepository, clientRep repository.ClientRepository, cfg *config.Config, kp *kafka.Producer) ContractService {
 	return &contractService{rep: rep, clientRep: clientRep}
 }
 

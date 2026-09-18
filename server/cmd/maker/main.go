@@ -139,6 +139,7 @@ type {{.Entity.Name}}DTO struct {
 var serviceTpl = `package service
 
 import (
+	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
 	"github.com/victoryus84/gorders/internal/repository"
@@ -152,25 +153,45 @@ func New{{.Entity.Name}}Service(repo *repository.GenericRepo[models.{{.Entity.Na
 	return &{{.Entity.Name}}Service{repo: repo}
 }
 
-func (s *{{.Entity.Name}}Service) Create(item *models.{{.Entity.Name}}) error {
-	err := s.repo.Create(item)
-	if err != nil {
-		logger.LogError("❌ Database error during {{.Entity.Name}} creation", err)
-		return err
+// ProcessImport primește calupul de la 1C și îl procesează
+func (s *{{.Entity.Name}}Service) ProcessImport(dtos []dto.{{.Entity.Name}}DTO) map[string]interface{} {
+	var successCount, errorCount int
+
+	// Iterăm prin tot calupul primit din 1C
+	for _, input := range dtos {
+		// Mapează DTO -> Model
+		item := models.{{.Entity.Name}}{
+{{range .Fields}}			{{.Name}}: input.{{.Name}},
+{{end}}		}
+
+		// Salvăm folosind motorul generic
+		// (Dacă adaugi UpsertBatch în generic.go, poți scoate bucla asta și salva tot deodată!)
+		err := s.repo.Create(&item)
+		if err != nil {
+			logger.LogError("❌ Eroare la salvarea {{.Entity.LowerName}}", err)
+			errorCount++
+		} else {
+			successCount++
+		}
 	}
-	
-	logger.LogInfo("✅ {{.Entity.Name}} successfully created", logger.Uint("id", item.ID))
-	return nil
+
+	logger.LogInfo("✅ Sincronizare {{.Entity.Name}} finalizată", logger.Int("success", successCount), logger.Int("errors", errorCount))
+
+	// Returnăm un raport frumos pentru 1C
+	return map[string]interface{}{
+		"received": len(dtos),
+		"inserted": successCount,
+		"errors":   errorCount,
+	}
 }
 
+// O funcție bonus ca să poți extrage datele pentru aplicația de mobil (Flutter)
 func (s *{{.Entity.Name}}Service) FindAll() ([]models.{{.Entity.Name}}, error) {
 	items, err := s.repo.FindManyWhere("1 = 1")
 	if err != nil {
-		logger.LogError("❌ Failed to fetch {{.Entity.Name}} records", err)
+		logger.LogError("❌ Eroare la extragerea {{.Entity.Name}}", err)
 		return nil, err
 	}
-	
-	logger.LogInfo("🔍 Fetched {{.Entity.Name}} records", logger.Int("count", len(items)))
 	return items, nil
 }
 `
@@ -183,8 +204,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/logger"
-	"github.com/victoryus84/gorders/internal/models"
 	"github.com/victoryus84/gorders/internal/service"
+	"github.com/victoryus84/gorders/internal/utils"
 )
 
 type {{.Entity.Name}}Handler struct {
@@ -195,24 +216,20 @@ func New{{.Entity.Name}}Handler(svc *service.{{.Entity.Name}}Service) *{{.Entity
 	return &{{.Entity.Name}}Handler{svc: svc}
 }
 
+// Create este acum o conductă de sincronizare din 1C
 func (h *{{.Entity.Name}}Handler) Create(c *gin.Context) {
-	var input dto.{{.Entity.Name}}DTO
-	if err := c.ShouldBindJSON(&input); err != nil {
-		logger.LogError("⚠️ Invalid {{.Entity.Name}} payload received", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data: " + err.Error()})
+	// 1. Parsăm body-ul (JSON/XML, un singur obiect sau array) folosind utilitarul
+	requests, err := utils.ParseBody[dto.{{.Entity.Name}}DTO](c)
+	if err != nil {
+		logger.LogError("⚠️ Format invalid primit de la 1C pentru {{.Entity.Name}}", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid: " + err.Error()})
 		return
 	}
 
-	// Mapează DTO -> Model
-	item := models.{{.Entity.Name}}{
-{{range .Fields}}		{{.Name}}: input.{{.Name}},
-{{end}}	}
+	// 2. Trimitem tot calupul la Service (Bucătarul se ocupă de procesare)
+	result := h.svc.ProcessImport(requests)
 
-	if err := h.svc.Create(&item); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create {{.Entity.LowerName}}"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, item)
+	// 3. Trimitem raportul înapoi la 1C
+	c.JSON(http.StatusCreated, result)
 }
 `

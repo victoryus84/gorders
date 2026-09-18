@@ -18,8 +18,7 @@ func NewClientHandler(svc service.ClientService) *ClientHandler {
 	return &ClientHandler{svc: svc}
 }
 
-// CreateClient - Handler pentru import masiv de clienți (1C style)
-func (h *ClientHandler) CreateClient(ctx *gin.Context) {
+func (hdl *ClientHandler) CreateClient(ctx *gin.Context) {
 	// 1. Parsăm body-ul (JSON/XML/Array) folosind utilitarul tău deștept
 	requests, err := utils.ParseBody[dto.ClientDTO](ctx)
 	if err != nil {
@@ -28,7 +27,7 @@ func (h *ClientHandler) CreateClient(ctx *gin.Context) {
 	}
 
 	// 2. Trimitem tot calupul la Service (Bucătarul se ocupă de validări și duplicate)
-	result := h.svc.ProcessClientImport(requests)
+	result := hdl.svc.ProcessClientImport(requests)
 
 	// 3. Răspunsul final
 	ctx.JSON(http.StatusCreated, result)

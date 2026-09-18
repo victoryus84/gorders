@@ -8,20 +8,43 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type ClientRepository struct {
+// 1. INTERFAȚA (Mutată aici din service)
+type ClientRepository interface {
+// Client methods
+	CreateClient(client *models.Client) error
+	UpsertClient(client *models.Client) error
+	UpsertClientsBatch(clients []*models.Client, batchSize int) error
+	FindClientByCode(code string) (*models.Client, error)
+	FindClientByFiscalID(fiscalID string) (*models.Client, error)
+	GetFirst1000Clients() ([]models.Client, error)
+	FindClientsByQuery(query string) ([]models.Client, error)
+	FindClientByID(id uint) (*models.Client, error)
+	FindAllClientCodesMap() (map[string]uint, error)
+	// Group client methods
+	CreateClientGroup(group *models.ClientGroup) error
+	UpsertClientGroup(group *models.ClientGroup) error
+	GetAllClientGroups() ([]models.ClientGroup, error)
+	// Address client methods
+	CreateClientAddress(addr *models.ClientAddress) error
+	UpsertClientsAddressBatch(addr []*models.ClientAddress, batchSize int) error
+}
+
+// 2. STRUCTURA PRIVATĂ
+type clientRepository struct { // presupunând că așa se numește
 	db *gorm.DB
 }
 
-// Constructorul pentru Uber Fx
-func NewClientRepository(db *gorm.DB) *ClientRepository {
-	return &ClientRepository{db: db}
+// 3. CONSTRUCTORUL
+// Asigură-te că returnează interfața ClientRepository, nu pointer la structură
+func NewClientRepository(db *gorm.DB) ClientRepository {
+	return &clientRepository{db: db}
 }
 
 // ==========================================
 // METODE SPECIFICE PENTRU CLIENȚI
 // ==========================================
 
-func (rep *ClientRepository) CreateClient(client *models.Client) error {
+func (rep *clientRepository) CreateClient(client *models.Client) error {
 	if client.Email != nil {
 		em := strings.TrimSpace(*client.Email)
 		el := strings.ToLower(em)
@@ -33,7 +56,7 @@ func (rep *ClientRepository) CreateClient(client *models.Client) error {
 	return rep.db.Create(client).Error
 }
 
-func (rep *ClientRepository) UpsertClient(client *models.Client) error {
+func (rep *clientRepository) UpsertClient(client *models.Client) error {
 	return rep.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "code"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -43,7 +66,7 @@ func (rep *ClientRepository) UpsertClient(client *models.Client) error {
 	}).Create(client).Error
 }
 
-func (rep *ClientRepository) UpsertClientsBatch(clients []*models.Client, batchSize int) error {
+func (rep *clientRepository) UpsertClientsBatch(clients []*models.Client, batchSize int) error {
 	return rep.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "code"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -53,7 +76,7 @@ func (rep *ClientRepository) UpsertClientsBatch(clients []*models.Client, batchS
 	}).CreateInBatches(clients, batchSize).Error
 }
 
-func (rep *ClientRepository) FindClientByID(id uint) (*models.Client, error) {
+func (rep *clientRepository) FindClientByID(id uint) (*models.Client, error) {
 	var client models.Client
 	err := rep.db.Preload("ClientType").First(&client, id).Error
 	if err != nil {
@@ -62,13 +85,27 @@ func (rep *ClientRepository) FindClientByID(id uint) (*models.Client, error) {
 	return &client, nil
 }
 
-func (rep *ClientRepository) GetFirst1000Clients() ([]models.Client, error) {
+func (rep *clientRepository) FindClientByCode(code string) (*models.Client, error) {
+	var client models.Client
+	// Căutăm primul client care are codul primit din 1C
+	err := rep.db.Where("code = ?", code).First(&client).Error
+	return &client, err
+}
+
+func (rep *clientRepository) FindClientByFiscalID(fiscalID string) (*models.Client, error) {
+	var client models.Client
+	// Căutăm clientul după IDNO / Codul Fiscal specific Republicii Moldova
+	err := rep.db.Where("fiscal_id = ?", fiscalID).First(&client).Error
+	return &client, err
+}
+
+func (rep *clientRepository) GetFirst1000Clients() ([]models.Client, error) {
 	var clients []models.Client
 	err := rep.db.Preload("ClientType").Limit(1000).Find(&clients).Error
 	return clients, err
 }
 
-func (rep *ClientRepository) FindClientsByQuery(query string) ([]models.Client, error) {
+func (rep *clientRepository) FindClientsByQuery(query string) ([]models.Client, error) {
 	if len(query) < 3 {
 		return []models.Client{}, nil
 	}
@@ -80,7 +117,7 @@ func (rep *ClientRepository) FindClientsByQuery(query string) ([]models.Client, 
 	return clients, err
 }
 
-func (rep *ClientRepository) FindAllClientCodesMap() (map[string]uint, error) {
+func (rep *clientRepository) FindAllClientCodesMap() (map[string]uint, error) {
 	type clientResult struct {
 		ID   uint
 		Code string
@@ -101,19 +138,31 @@ func (rep *ClientRepository) FindAllClientCodesMap() (map[string]uint, error) {
 // ==========================================
 // METODE SPECIFICE PENTRU GRUPURI
 // ==========================================
+func (rep *clientRepository) CreateClientGroup(group *models.ClientGroup) error {
+	return rep.db.Create(group).Error
+}
 
-func (rep *ClientRepository) UpsertClientGroup(group *models.ClientGroup) error {
+func (rep *clientRepository) UpsertClientGroup(group *models.ClientGroup) error {
 	return rep.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "code"}},
 		DoUpdates: clause.AssignmentColumns([]string{"name"}),
 	}).Create(group).Error
 }
 
+func (rep *clientRepository) GetAllClientGroups() ([]models.ClientGroup, error) {
+    var groups []models.ClientGroup
+    err := rep.db.Find(&groups).Error
+    return groups, err
+}
+
 // ==========================================
 // METODE SPECIFICE PENTRU ADRESE
 // ==========================================
+func (rep *clientRepository) CreateClientAddress(addr *models.ClientAddress) error {
+	return rep.db.Create(addr).Error
+}
 
-func (rep *ClientRepository) UpsertClientsAddressBatch(addresses []*models.ClientAddress, batchSize int) error {
+func (rep *clientRepository) UpsertClientsAddressBatch(addresses []*models.ClientAddress, batchSize int) error {
 	return rep.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "sync_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{

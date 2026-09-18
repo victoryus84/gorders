@@ -8,15 +8,17 @@ import (
 type Product struct {
 	gorm.Model
 	UUIDModel      `gorm:"embedded"`
-	ProductGroupID uint         `gorm:"not null"`                                // ID-ul grupei de produse
-	ProductGroup   ProductGroup `gorm:"foreignKey:ProductGroupID;references:ID"` // Grupa de produse din care face parte
+	Code           string       `gorm:"type:varchar(50);not null;unique"`        // Codul produsului
 	Name           string       `gorm:"type:varchar(100);not null"`              // Numele produsului
 	Description    string       `gorm:"type:text"`                               // Descrierea produsului
 	Price          float64      `gorm:"type:decimal(10,2);default:0.0"`          // Prețul produsului
-	UnitID         uint         `gorm:"not null"`                                // ID-ul unității de măsură
+	ProductGroup   ProductGroup `gorm:"foreignKey:ProductGroupID;references:ID"` // Grupa de produse din care face parte
+	ProductGroupID *uint        `gorm:"column:product_group_id"`                 // ID-ul grupei de produse
 	Unit           Unit         `gorm:"foreignKey:UnitID;references:ID"`         // Unitatea de măsură a produsului
-	VatTaxID       uint         `gorm:"not null"`                                // ID-ul taxei VAT
+	UnitID         uint         `gorm:"not null"`                                // ID-ul unității de măsură
 	VatTax         VatTax       `gorm:"foreignKey:VatTaxID;references:ID"`       // Taxa VAT a produsului
+	VatTaxID       uint         `gorm:"not null"`                                // ID-ul taxei VAT
+	Article        string       `gorm:"type:varchar(100)"`                       // Articolul produsului (opțional)
 }
 
 // ********** ProductGroup - Grupa de Produse **********

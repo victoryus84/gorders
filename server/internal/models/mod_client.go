@@ -8,8 +8,6 @@ import (
 type Client struct {
 	gorm.Model
 	UUIDModel     `gorm:"embedded"`
-	ClientGroupID *uint           `gorm:"column:client_group_id"`           // Foreign key to ClientGroup
-	ClientTypeID  uint            `gorm:"not null"`                         // Foreign key to ClientType
 	Code    	  string          `gorm:"type:varchar(15);unique;not null"` // Codul clientului (unic)
 	Name          string          `gorm:"type:varchar(100);not null"`       // Numele clientului
 	Description   string          `gorm:"type:text"`                        // Descrierea clientului
@@ -19,7 +17,9 @@ type Client struct {
 	FiscalAddress string          `gorm:"type:text"`                        // Adresa fiscală a clientului
 	PostalAddress string          `gorm:"type:text"`                        // Adresa postala a clientului
 	ClientGroup   ClientGroup     `gorm:"foreignKey:ClientGroupID;not null"` // Grupa din care face parte clientul
+	ClientGroupID *uint           `gorm:"column:client_group_id"`           // Foreign key to ClientGroup
 	ClientType    ClientType      `gorm:"foreignKey:ClientTypeID;not null"` // Tipul clientului ("individual", "company", etc.)
+	ClientTypeID  uint            `gorm:"not null"`                         // Foreign key to ClientType
 	Contracts     []Contract      `gorm:"foreignKey:ClientID"`              // Contractele clientului
 	Addresses     []ClientAddress `gorm:"foreignKey:ClientID"`              // Adresele asociate clientului
 }
