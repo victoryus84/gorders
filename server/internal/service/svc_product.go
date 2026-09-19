@@ -1,94 +1,157 @@
 package service
 
 import (
+	"strings"
+
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
 	"github.com/victoryus84/gorders/internal/repository"
 )
 
-// 1. INTERFAȚA PUBLICĂ - Asta e tot ce văd Handlerele sau alte module
+// 1. INTERFAȚA PUBLICĂ
 type ProductService interface {
-	ProcessProductImport(dtos []dto.ProductDTO) map[string]interface{}
+	ProcessProductImport(requests []dto.ProductDTO) dto.ImportResult
 	ProcessProductGroupImport(dtos []dto.ProductGroupDTO) map[string]interface{}
 	GetFirst1000Products() ([]models.Product, error)
 }
 
-// 2. STRUCTURA PRIVATĂ - Aici ținem "uneltele" (Repozitoarele dedicate)
+// 2. STRUCTURA PRIVATĂ
 type productService struct {
-	productRepository repository.ProductRepository
-	unitRepository    repository.UnitRepository
-	vatRepository     repository.VatTaxRepository
+	rep_prd repository.ProductRepository
+	rep_unt repository.UnitRepository
+	rep_vat repository.VatTaxRepository
 }
 
 // 3. CONSTRUCTORUL PENTRU UBER FX
-// Primește repozitoarele tale specifice și returnează Interfața
 func NewProductService(
-	pr repository.ProductRepository,
-	ur repository.UnitRepository,
-	vr repository.VatTaxRepository,
+	rep_prd repository.ProductRepository,
+	rep_unt repository.UnitRepository,
+	rep_vat repository.VatTaxRepository,
 ) ProductService {
 	return &productService{
-		productRepository: pr,
-		unitRepository:    ur,
-		vatRepository:     vr,
+		rep_prd: rep_prd,
+		rep_unt: rep_unt,
+		rep_vat: rep_vat,
 	}
 }
 
 // 4. IMPLEMENTAREA LOGICII DE SINCRONIZARE
-func (svc *productService) ProcessProductImport(dtos []dto.ProductDTO) map[string]interface{} {
-	if len(dtos) == 0 {
-		return map[string]interface{}{"received": 0, "inserted": 0, "errors": 0}
-	}
-
-	// Încărcăm dicționarele folosind metodele tale clare pe care le vom scrie în repozitoarele lor
-	unitMap, err := svc.unitRepository.GetUnitIDMap() 
-	if err != nil {
-		logger.LogError("❌ Lipsă dicționar Unități", err)
-		return map[string]interface{}{"error": "Lipsește dicționarul de Unități"}
-	}
-
-	vatMap, err := svc.vatRepository.GetVatIDMap()
-	if err != nil {
-		logger.LogError("❌ Lipsă dicționar TVA", err)
-		return map[string]interface{}{"error": "Lipsește dicționarul de TVA"}
-	}
-
-	// Traducem și pregătim modelele
-	items := make([]models.Product, 0, len(dtos))
-	for _, input := range dtos {
-		item := models.Product{
-			Code:        input.Code,
-			Name:        input.Name,
-			Description: input.Description,
-			Article:     input.Article,
-			UnitID:      unitMap[input.Unit],    // Tradus instant
-			VatTaxID:    vatMap[input.VatCode], // Tradus instant
+func (svc *productService) ProcessProductImport(requests []dto.ProductDTO) dto.ImportResult {
+	if len(requests) == 0 {
+		return dto.ImportResult{
+			Status:  "success",
+			Message: "Niciun produs primit pentru procesare.",
 		}
-		items = append(items, item)
 	}
 
-	// Salvăm lotul folosind metoda ta dedicată
-	err = svc.productRepository.UpsertProductsBatch(items, 500)
+	productsToSave := make([]models.Product, 0, len(requests))
+	skipped := make([]map[string]string, 0)
+
+	// Extragem dicționarele, cu tratare minimală a erorilor
+	unitMap, err := svc.rep_unt.GetUnitIDMap()
 	if err != nil {
-		logger.LogError("❌ Eroare la salvarea produselor", err)
-		return map[string]interface{}{"received": len(dtos), "inserted": 0, "errors": len(dtos)}
+		logger.LogError("Atenție: Eroare la încărcarea dicționarului de Unități", err)
 	}
 
-	return map[string]interface{}{"received": len(dtos), "inserted": len(items), "errors": 0}
+	vatMap, err := svc.rep_vat.GetVatIDMap()
+	if err != nil {
+		logger.LogError("Atenție: Eroare la încărcarea dicționarului de TVA", err)
+	}
+
+	groupMap, err := svc.rep_prd.GetGroupIDMap()
+	if err != nil {
+		logger.LogError("Atenție: Eroare la încărcarea dicționarului de Grupe Produse", err)
+	}
+
+	// Procesăm fiecare produs
+	for _, req := range requests {
+		// Validare
+		if strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.Name) == "" {
+			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "missing_required_fields"})
+			continue
+		}
+
+		// Mapare via Helpers
+		dbUnitID := svc.resolveUnitID(req.Unit, unitMap)
+		dbVatID := svc.resolveVatID(req.VatCode, vatMap)
+		dbGroupID := svc.resolveGroupID(req.GroupCode, groupMap)
+
+		// Construire Model
+		product := models.Product{
+			Code:           req.Code,
+			Name:           req.Name,
+			Description:    req.Description,
+			Article:        req.Article,
+			UnitID:         dbUnitID,
+			VatTaxID:       dbVatID,
+			ProductGroupID: dbGroupID,
+		}
+
+		productsToSave = append(productsToSave, product)
+	}
+
+	// Salvăm în masă
+	if err := svc.rep_prd.UpsertProductsBatch(productsToSave, 500); err != nil {
+		return dto.ImportResult{
+			Status:  "error",
+			Message: "Eroare fatală la salvarea în masă a produselor: " + err.Error(),
+		}
+	}
+
+	return dto.ImportResult{
+		Status:         "success",
+		TotalProcessed: len(productsToSave),
+		TotalSkipped:   len(skipped),
+		ErrorsPreview:  svc.limitErrors(skipped, 20),
+		Message:        "Sincronizare produse finalizată!",
+	}
 }
 
-// 1. Funcția care aduce primii 1000 de produse
+// Funcția care aduce primii 1000 de produse
 func (svc *productService) GetFirst1000Products() ([]models.Product, error) {
-	// Trimitem cererea mai departe către repozitoriu
-	return svc.productRepository.GetFirst1000Products()
+	return svc.rep_prd.GetFirst1000Products()
 }
 
-// 2. Funcția pentru Grupe de Produse (Schelet ca să nu urle compilatorul)
+// Funcția pentru Grupe de Produse
 func (svc *productService) ProcessProductGroupImport(dtos []dto.ProductGroupDTO) map[string]interface{} {
-	// TODO: Aici vom face maparea din DTO în Model și vom chema un UpsertProductGroupsBatch
-	// Momentan returnăm un răspuns gol ca să compileze perfect aplicația.
 	return map[string]interface{}{
 		"status": "funcția pentru grupe este în construcție",
 	}
+}
+
+// --- HELPER METODE PRIVATE ---
+
+func (svc *productService) resolveUnitID(code string, unitMap map[string]uint) uint {
+	if unitMap != nil {
+		if id, ok := unitMap[strings.TrimSpace(code)]; ok && id != 0 {
+			return id
+		}
+	}
+	return 1
+}
+
+func (svc *productService) resolveVatID(code string, vatMap map[string]uint) uint {
+	if vatMap != nil {
+		if id, ok := vatMap[strings.TrimSpace(code)]; ok && id != 0 {
+			return id
+		}
+	}
+	return 1
+}
+
+func (svc *productService) resolveGroupID(code string, groupMap map[string]uint) *uint {
+	if groupMap != nil {
+		if id, ok := groupMap[strings.TrimSpace(code)]; ok && id != 0 {
+			return &id
+		}
+	}
+	return nil
+}
+
+func (svc *productService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+	if len(skipped) > limit {
+		return skipped[:limit]
+	}
+	return skipped
 }

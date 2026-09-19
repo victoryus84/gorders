@@ -15,6 +15,7 @@ type ProductRepository interface {
 	// FUNCȚIA NOUĂ PENTRU 1C: Salvare masivă!
 	UpsertProductsBatch(items []models.Product, batchSize int) error
 	GetFirst1000Products() ([]models.Product, error) 
+	GetGroupIDMap() (map[string]uint, error)
 }
 
 // STRUCTURA
@@ -79,4 +80,17 @@ func (rep *productRepository) GetFirst1000Products() ([]models.Product, error) {
 	var products []models.Product
 	err := rep.db.Limit(1000).Find(&products).Error
 	return products, err
+}
+
+func (rep *productRepository) GetGroupIDMap() (map[string]uint, error) {
+    var groups []models.ProductGroup
+    if err := rep.db.Select("id", "code").Find(&groups).Error; err != nil {
+        return nil, err
+    }
+    
+    groupMap := make(map[string]uint)
+    for _, g := range groups {
+        groupMap[g.Code] = g.ID
+    }
+    return groupMap, nil
 }

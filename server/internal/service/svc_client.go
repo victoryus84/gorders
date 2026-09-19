@@ -35,7 +35,6 @@ func NewClientService(
 	rep repository.ClientRepository, // <-- Am adăugat prefixul repository.
 	cfg *config.Config,
 	kfk *kafka.Producer) ClientService {
-	
 	return &clientService{
 		rep: rep,
 		cfg: cfg,
