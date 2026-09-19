@@ -29,8 +29,8 @@ type ProductGroup struct {
 	Name        string    `gorm:"type:varchar(100);not null;unique"` // Numele grupei (ex: "Băuturi", "Electronice")
 	Description string    `gorm:"type:text"`                         // Descrierea grupei
 	ParentID    *uint 
-	Parent      *ClientGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupa părinte (dacă există)
-	Children    []ClientGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupele copil (dacă există)
+	Parent      *ProductGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupa părinte (dacă există)
+	Children    []ProductGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupele copil (dacă există)
 	Products    []Product `gorm:"foreignKey:ProductGroupID"`         // O grupă are mai multe produse
 }
 
