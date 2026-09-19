@@ -95,8 +95,8 @@ func SeedVatTaxes(db *gorm.DB) error {
 
 func SeedIncomeTaxes(db *gorm.DB) error {
 	incomeTaxes := []models.IncomeTax{
-		{Name: "Income 12%", Rate: 12.0, Description: "12-00"},
-		{Name: "Income Exempt", Rate: 0.0, Description: "exempt"},
+		{Code: "INCOME_12", Name: "Income 12%", Rate: 12.0, Description: "12-00"},
+		{Code: "INCOME_EXEMPT", Name: "Income Exempt", Rate: 0.0, Description: "exempt"},
 	}
 
 	for _, incomeTax := range incomeTaxes {
@@ -120,13 +120,13 @@ func SeedIncomeTaxes(db *gorm.DB) error {
 
 func SeedUnits(db *gorm.DB) error {
 	units := []models.Unit{
-		{Name: "buc", Description: "bucată"},
-		{Name: "kg", Description: "kilogram"},
-		{Name: "m", Description: "metru"},
-		{Name: "l", Description: "litru"},
-		{Name: "set", Description: "set"},
-		{Name: "pet", Description: "plastic"},
-		{Name: "t", Description: "tonă"},
+		{Code: "BUC", Name: "buc", Description: "bucată"},
+		{Code: "KG", Name: "kg", Description: "kilogram"},
+		{Code: "M", Name: "m", Description: "metru"},
+		{Code: "L", Name: "l", Description: "litru"},
+		{Code: "SET", Name: "set", Description: "set"},
+		{Code: "PET", Name: "pet", Description: "plastic"},
+		{Code: "T", Name: "t", Description: "tonă"},
 	}
 
 	for _, unit := range units {
