@@ -8,7 +8,7 @@ import (
 type Product struct {
 	gorm.Model
 	UUIDModel      `gorm:"embedded"`
-	Code           string       `gorm:"type:varchar(15);not null;unique"`        // Codul produsului
+	Code           string       `gorm:"type:varchar(15);unique;not null"`        // Codul produsului
 	Name           string       `gorm:"type:varchar(100);not null"`              // Numele produsului
 	Description    string       `gorm:"type:text"`                               // Descrierea produsului
 	Price          float64      `gorm:"type:decimal(10,2);default:0.0"`          // Prețul produsului
@@ -25,8 +25,8 @@ type Product struct {
 type ProductGroup struct {
 	gorm.Model
 	UUIDModel   `gorm:"embedded"`
-	Code        string    `gorm:"type:varchar(15);not null;unique"`  // Codul grupei (ex: "001", "ELEC")
-	Name        string    `gorm:"type:varchar(100);not null;unique"` // Numele grupei (ex: "Băuturi", "Electronice")
+	Code        string    `gorm:"type:varchar(15);unique;not null"`  // Codul grupei (ex: "001", "ELEC")
+	Name        string    `gorm:"type:varchar(100);not null"` // Numele grupei (ex: "Băuturi", "Electronice")
 	Description string    `gorm:"type:text"`                         // Descrierea grupei
 	ParentID    *uint 
 	Parent      *ProductGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupa părinte (dacă există)

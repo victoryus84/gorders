@@ -29,7 +29,7 @@ type ClientGroup struct {
 	gorm.Model
 	UUIDModel   `gorm:"embedded"`
 	Code    	string    `gorm:"type:varchar(15);unique;not null"`  // Codul grupei (unic)
-	Name        string    `gorm:"type:varchar(100);not null;unique"` // Numele grupei (ex: "Băuturi", "Electronice")
+	Name        string    `gorm:"type:varchar(100);not null"` // Numele grupei (ex: "Băuturi", "Electronice")
 	Description string    `gorm:"type:text"`                         // Descrierea grupei
 	ParentID    *uint 
 	Parent      *ClientGroup `gorm:"foreignKey:ParentID"`            // Legătură către grupa părinte (dacă există)
