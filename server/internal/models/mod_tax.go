@@ -8,7 +8,7 @@ import (
 type VatTax struct {
 	gorm.Model
 	UUIDModel   `gorm:"embedded"`
-	Code        string  `gorm:"type:varchar(100);not null"`  // Codul taxei
+	Code        string  `gorm:"type:varchar(15);not null;unique"`  // Codul taxei
 	Name        string  `gorm:"type:varchar(100);not null"`  // Numele taxei
 	Rate        float64 `gorm:"type:decimal(10,2);not null"` // Rata taxei
 	Description string  `gorm:"type:text"`                   // Descrierea taxei
@@ -18,7 +18,7 @@ type VatTax struct {
 type IncomeTax struct {
 	gorm.Model
 	UUIDModel   `gorm:"embedded"`
-	Code        string  `gorm:"type:varchar(100);not null"`  // Codul taxei
+	Code        string  `gorm:"type:varchar(15);not null;unique"`  // Codul taxei
 	Name        string  `gorm:"type:varchar(100);not null"`  // Numele taxei
 	Rate        float64 `gorm:"type:decimal(10,2);not null"` // Rata taxei
 	Description string  `gorm:"type:text"`                   // Descrierea taxei
