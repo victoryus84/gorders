@@ -9,12 +9,15 @@ import (
 // INTERFAȚA: Asta este exact ce așteaptă ProductService
 type ProductRepository interface {
 	CreateProduct(product *models.Product) error
+	UpsertProductsBatch(items []models.Product, batchSize int) error
 	FindProductGroupByID(id uint) (*models.ProductGroup, error)
 	FindProductByID(id uint) (*models.Product, error)
 	FindProductsByQuery(query string) ([]models.Product, error)
-	// FUNCȚIA NOUĂ PENTRU 1C: Salvare masivă!
-	UpsertProductsBatch(items []models.Product, batchSize int) error
 	GetFirst1000Products() ([]models.Product, error) 
+	// Group product methods
+	CreateProductGroup(group *models.ProductGroup) error
+	UpsertProductGroup(group *models.ProductGroup) error
+	GetAllProductGroups() ([]models.ProductGroup, error)
 	GetGroupIDMap() (map[string]uint, error)
 }
 
@@ -82,6 +85,20 @@ func (rep *productRepository) GetFirst1000Products() ([]models.Product, error) {
 	return products, err
 }
 
+// ==========================================
+// METODE SPECIFICE PENTRU GRUPURI
+// ==========================================
+func (rep *productRepository) CreateProductGroup(group *models.ProductGroup) error {
+	return rep.db.Create(group).Error
+}
+
+func (rep *productRepository) UpsertProductGroup(group *models.ProductGroup) error {
+	return rep.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "code"}},
+		DoUpdates: clause.AssignmentColumns([]string{"name"}),
+	}).Create(group).Error
+}
+
 func (rep *productRepository) GetGroupIDMap() (map[string]uint, error) {
     var groups []models.ProductGroup
     if err := rep.db.Select("id", "code").Find(&groups).Error; err != nil {
@@ -93,4 +110,10 @@ func (rep *productRepository) GetGroupIDMap() (map[string]uint, error) {
         groupMap[g.Code] = g.ID
     }
     return groupMap, nil
+}
+
+func (rep *productRepository) GetAllProductGroups() ([]models.ProductGroup, error) {
+    var groups []models.ProductGroup
+    err := rep.db.Find(&groups).Error
+    return groups, err
 }

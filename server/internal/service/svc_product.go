@@ -1,8 +1,12 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"strings"
 
+	"github.com/victoryus84/gorders/internal/config"
+	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/dto"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
@@ -12,7 +16,7 @@ import (
 // 1. INTERFAȚA PUBLICĂ
 type ProductService interface {
 	ProcessProductImport(requests []dto.ProductDTO) dto.ImportResult
-	ProcessProductGroupImport(dtos []dto.ProductGroupDTO) map[string]interface{}
+	ProcessProductGroupImport(dtos []dto.ProductGroupDTO) dto.ImportResult
 	GetFirst1000Products() ([]models.Product, error)
 }
 
@@ -21,6 +25,8 @@ type productService struct {
 	rep_prd repository.ProductRepository
 	rep_unt repository.UnitRepository
 	rep_vat repository.VatTaxRepository
+	cfg *config.Config
+	kfk *kafka.Producer
 }
 
 // 3. CONSTRUCTORUL PENTRU UBER FX
@@ -28,11 +34,14 @@ func NewProductService(
 	rep_prd repository.ProductRepository,
 	rep_unt repository.UnitRepository,
 	rep_vat repository.VatTaxRepository,
-) ProductService {
+	cfg *config.Config,
+	kfk *kafka.Producer) ProductService {
 	return &productService{
 		rep_prd: rep_prd,
 		rep_unt: rep_unt,
 		rep_vat: rep_vat,
+		cfg: cfg,
+		kfk: kfk,
 	}
 }
 
@@ -108,17 +117,82 @@ func (svc *productService) ProcessProductImport(requests []dto.ProductDTO) dto.I
 	}
 }
 
+func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroupDTO) dto.ImportResult {
+	created := make([]*models.ProductGroup, 0)
+	skipped := make([]map[string]string, 0)
+	topic := svc.cfg.GetTopic("product_groups")
+
+	// 1. INIȚIALIZAREA: Încărcăm grupele existente o singură dată
+	groupMap := make(map[string]uint)
+	if existingGroups, err := svc.rep_prd.GetAllProductGroups(); err == nil {
+		for _, g := range existingGroups {
+			groupMap[g.Code] = g.ID
+		}
+	}
+
+	for _, req := range requests {
+		// A. Validare de bază
+		if strings.TrimSpace(req.Name) == "" {
+			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
+			continue
+		}
+
+		// B. Verificare duplicate
+		// existing, err := svc.rep.FindClientGroupByCode(req.Code)
+		// if err == nil && existing != nil {
+		//     skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
+		//     continue
+		// }
+
+		// C. MAPAREA IERARHIEI - Căutăm în dicționar dacă avem codul părintelui și luăm ID-ul lui
+		var parentIDPtr *uint
+		if cleanCode := strings.TrimSpace(req.ParentCode); cleanCode != "" && cleanCode != "not inserted" {
+			if id, exists := groupMap[cleanCode]; exists {
+				parentIDPtr = &id
+			}
+		}
+
+		// D. Mapare DTO -> Model
+		productgroup := &models.ProductGroup{
+			Code:        req.Code,
+			Name:        req.Name,
+			Description: req.Description,
+			ParentID:    parentIDPtr, // Acum ia adresa reală sau rămâne nil
+		}
+
+		// E. Salvare
+		if err := svc.rep_prd.UpsertProductGroup(productgroup); err != nil {
+			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
+			continue
+		}
+
+		// F. ACTUALIZAREA: Scriem grupa abia salvată în dicționar pentru viitorii ei copii!
+		groupMap[productgroup.Code] = productgroup.ID
+
+		// G. KAFKA
+		go func(mod *models.ProductGroup) {
+			payload, _ := json.Marshal(mod)
+			_ = svc.kfk.Publish(context.Background(), topic, mod.Name, payload)
+		}(productgroup)
+
+		created = append(created, productgroup)
+	}
+
+	return dto.ImportResult{
+		Status:         "success",
+		TotalProcessed: len(created),
+		TotalSkipped:   len(skipped),
+		ErrorsPreview:  svc.limitErrors(skipped, 20),
+		Message:        "Import finalizat",
+	}
+}
+
 // Funcția care aduce primii 1000 de produse
 func (svc *productService) GetFirst1000Products() ([]models.Product, error) {
 	return svc.rep_prd.GetFirst1000Products()
 }
 
 // Funcția pentru Grupe de Produse
-func (svc *productService) ProcessProductGroupImport(dtos []dto.ProductGroupDTO) map[string]interface{} {
-	return map[string]interface{}{
-		"status": "funcția pentru grupe este în construcție",
-	}
-}
 
 // --- HELPER METODE PRIVATE ---
 
@@ -155,3 +229,4 @@ func (svc *productService) limitErrors(skipped []map[string]string, limit int) [
 	}
 	return skipped
 }
+
