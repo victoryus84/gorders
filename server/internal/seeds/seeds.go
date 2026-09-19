@@ -68,6 +68,7 @@ func SeedVatTaxes(db *gorm.DB) error {
 	vatTaxes := []models.VatTax{
 		{Code: "VAT_20", Name: "VAT 20%", Rate: 20.0, Description: "20-00"},
 		{Code: "VAT_10", Name: "VAT 10%", Rate: 10.0, Description: "10-00"},
+		{Code: "VAT_8", Name: "VAT 8%", Rate: 8.0, Description: "8-00"},
 		{Code: "VAT_6", Name: "VAT 6%", Rate: 6.0, Description: "6-00"},
 		{Code: "VAT_5", Name: "VAT 5%", Rate: 5.0, Description: "5-00"},
 		{Code: "VAT_0", Name: "VAT 0%", Rate: 0.0, Description: "0-00"},
