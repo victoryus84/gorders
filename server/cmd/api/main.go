@@ -89,13 +89,13 @@ func main() {
 	).Run()
 }
 
-func startHTTPServer(lc fx.Lifecycle, r *gin.Engine, cfg *config.Config) {
+func startHTTPServer(lc fx.Lifecycle, rte *gin.Engine, cfg *config.Config) {
 	// ❌ Nu mai avem nevoie de router.SetupRoutes(r, allHandlers)
 	// Rutele sunt deja înregistrate de funcțiile Register*Routes din module.go!
 
 	srv := &http.Server{
 		Addr:    ":8080", // Opțional: poți trage și portul din cfg.AppPort dacă îl ai
-		Handler: r,
+		Handler: rte,
 	}
 
 	// Îi spunem lui Fx cum să pornească serverul fără să blocheze restul proceselor

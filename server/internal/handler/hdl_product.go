@@ -58,12 +58,12 @@ func (hdl *ProductHandler) GetProducts(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, products)
 }
 
-func RegisterProductRoutes(r *gin.Engine, h *ProductHandler) {
-	products := r.Group("/api/v1/products")
+func RegisterProductRoutes(rte *gin.Engine, hdl *ProductHandler) {
+	products := rte.Group("/api/v1/products")
 	products.Use(middleware.AuthJWT())
 	{
-		products.GET("", h.GetProducts)
-		products.POST("", h.CreateProduct)
-		products.POST("/groups", h.CreateProductGroup)
+		products.GET("", hdl.GetProducts)
+		products.POST("", hdl.CreateProduct)
+		products.POST("/groups", hdl.CreateProductGroup)
 	}
 }

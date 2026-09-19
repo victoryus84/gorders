@@ -80,11 +80,11 @@ func (hdl *ContractHandler) parseID(c *gin.Context, paramName string) (uint, boo
 	return uint(id), true
 }
 
-func RegisterContractRoutes(r *gin.Engine, h *ContractHandler) {
-	contracts := r.Group("/api/v1/contracts")
+func RegisterContractRoutes(rte *gin.Engine, hdl *ContractHandler) {
+	contracts := rte.Group("/api/v1/contracts")
 	contracts.Use(middleware.AuthJWT())
 	{
-		contracts.POST("", h.CreateContract)
-		contracts.GET("/:client_id", h.GetContractsByClientID)
+		contracts.POST("", hdl.CreateContract)
+		contracts.GET("/:client_id", hdl.GetContractsByClientID)
 	}
 }
