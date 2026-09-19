@@ -7,8 +7,9 @@ type ProductDTO struct {
 	Description string `json:"description,omitempty" xml:"description,omitempty"`
 	Article 	string `json:"article,omitempty" xml:"article,omitempty"`
 	Unit        string `json:"unit" xml:"unit" binding:"required"`
-	VatTax	    *float64 `json:"vat_tax" xml:"vat_tax" binding:"required"`
 	VatCode 	string `json:"vat_code" xml:"vat_code" binding:"required"`
+	VatTax	    *float64 `json:"vat_tax" xml:"vat_tax" binding:"required"`
+	GroupCode   string `json:"group" xml:"group" binding:"required"`
 }
 
 type ProductGroupDTO struct {

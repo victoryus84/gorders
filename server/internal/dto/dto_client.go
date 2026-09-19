@@ -10,7 +10,7 @@ type ClientDTO struct {
 	FiscalAddress string `json:"fiscal_address" xml:"fiscal_address"`
 	PostalAddress string `json:"postal_address" xml:"postal_address"`
 	FiscalID      string `json:"fiscal_id" xml:"fiscal_id" binding:"required"`
-	GroupCode     string `json:"client_group" xml:"client_group" binding:"required"`
+	GroupCode     string `json:"group" xml:"group" binding:"required"`
 }
 
 type ClientGroupDTO struct {
