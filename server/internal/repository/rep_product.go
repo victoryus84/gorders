@@ -12,9 +12,6 @@ type ProductRepository interface {
 	FindProductGroupByID(id uint) (*models.ProductGroup, error)
 	FindProductByID(id uint) (*models.Product, error)
 	FindProductsByQuery(query string) ([]models.Product, error)
-	FindVatTaxByID(id uint) (*models.VatTax, error)
-	FindUnitByID(id uint) (*models.Unit, error)
-	
 	// FUNCȚIA NOUĂ PENTRU 1C: Salvare masivă!
 	UpsertProductsBatch(items []models.Product, batchSize int) error
 	GetFirst1000Products() ([]models.Product, error) 
@@ -63,18 +60,6 @@ func (rep *productRepository) FindProductsByQuery(query string) ([]models.Produc
 			"%"+query+"%", "%"+query+"%", "%"+query+"%").
 		Limit(50).Find(&products).Error
 	return products, err
-}
-
-func (rep *productRepository) FindVatTaxByID(id uint) (*models.VatTax, error) {
-	var vatTax models.VatTax
-	err := rep.db.First(&vatTax, id).Error
-	return &vatTax, err
-}
-
-func (rep *productRepository) FindUnitByID(id uint) (*models.Unit, error) {
-	var unit models.Unit
-	err := rep.db.First(&unit, id).Error
-	return &unit, err
 }
 
 // [NOU]: Motorul de sincronizare din 1C!

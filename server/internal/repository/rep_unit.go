@@ -7,6 +7,7 @@ import (
 
 // 1. Interfața pe care o va cere ProductService
 type UnitRepository interface {
+	FindUnitByID(id uint) (*models.Unit, error)
 	GetUnitIDMap() (map[string]uint, error)
 }
 
@@ -20,10 +21,16 @@ func NewUnitRepository(db *gorm.DB) UnitRepository {
 	return &unitRepository{db: db}
 }
 
+func (rep *unitRepository) FindUnitByID(id uint) (*models.Unit, error) {
+	var unit models.Unit
+	err := rep.db.First(&unit, id).Error
+	return &unit, err
+}
+
 // 4. Logica care aduce dicționarul ultra-rapid
-func (r *unitRepository) GetUnitIDMap() (map[string]uint, error) {
+func (rep *unitRepository) GetUnitIDMap() (map[string]uint, error) {
 	// Selectăm `id` și `code` (identificatorul unic pentru sincronizare)
-	rows, err := r.db.Model(&models.Unit{}).Select("id, code").Rows()
+	rows, err := rep.db.Model(&models.Unit{}).Select("id, code").Rows()
 	if err != nil {
 		return nil, err
 	}

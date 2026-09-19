@@ -7,6 +7,7 @@ import (
 
 // 1. Interfața
 type VatTaxRepository interface {
+	FindVatTaxByID(id uint) (*models.VatTax, error)
 	GetVatIDMap() (map[string]uint, error)
 }
 
@@ -20,10 +21,16 @@ func NewVatTaxRepository(db *gorm.DB) VatTaxRepository {
 	return &vatTaxRepository{db: db}
 }
 
+func (rep *vatTaxRepository) FindVatTaxByID(id uint) (*models.VatTax, error) {
+	var vatTax models.VatTax
+	err := rep.db.First(&vatTax, id).Error
+	return &vatTax, err
+}
+
 // 4. Logica pentru dicționar
-func (r *vatTaxRepository) GetVatIDMap() (map[string]uint, error) {
+func (rep *vatTaxRepository) GetVatIDMap() (map[string]uint, error) {
 	// Selectăm `id` și `code` (identificatorul unic pentru sincronizare)
-	rows, err := r.db.Model(&models.VatTax{}).Select("id, code").Rows()
+	rows, err := rep.db.Model(&models.VatTax{}).Select("id, code").Rows()
 	if err != nil {
 		return nil, err
 	}
