@@ -22,8 +22,8 @@ func NewVatTaxRepository(db *gorm.DB) VatTaxRepository {
 
 // 4. Logica pentru dicționar
 func (r *vatTaxRepository) GetVatIDMap() (map[string]uint, error) {
-	// Aici citim id și description (codul tău din 1C)
-	rows, err := r.db.Model(&models.VatTax{}).Select("id, description").Rows()
+	// Selectăm `id` și `code` (identificatorul unic pentru sincronizare)
+	rows, err := r.db.Model(&models.VatTax{}).Select("id, code").Rows()
 	if err != nil {
 		return nil, err
 	}
@@ -33,12 +33,18 @@ func (r *vatTaxRepository) GetVatIDMap() (map[string]uint, error) {
 	
 	for rows.Next() {
 		var id uint
-		var description string
+		var code string
 		
-		if err := rows.Scan(&id, &description); err != nil {
-			continue 
+		// Scanăm id-ul și codul
+		if err := rows.Scan(&id, &code); err != nil {
+			continue // Ignorăm rândurile cu erori la citire
 		}
-		resultMap[description] = id
+		
+		// Un strat extra de siguranță: nu adăugăm în map codurile goale
+		// (în caz că ai date vechi care încă nu au primit codul la migrare)
+		if code != "" {
+			resultMap[code] = id
+		}
 	}
 	
 	return resultMap, nil

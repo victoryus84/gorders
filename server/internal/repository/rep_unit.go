@@ -22,25 +22,29 @@ func NewUnitRepository(db *gorm.DB) UnitRepository {
 
 // 4. Logica care aduce dicționarul ultra-rapid
 func (r *unitRepository) GetUnitIDMap() (map[string]uint, error) {
-	// Facem un query rapid doar pentru ID și Name
-	rows, err := r.db.Model(&models.Unit{}).Select("id, name").Rows()
+	// Selectăm `id` și `code` (identificatorul unic pentru sincronizare)
+	rows, err := r.db.Model(&models.Unit{}).Select("id, code").Rows()
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	// Creăm dicționarul în memorie
 	resultMap := make(map[string]uint)
 	
 	for rows.Next() {
 		var id uint
-		var name string
+		var code string
 		
-		// Citim valorile din baza de date
-		if err := rows.Scan(&id, &name); err != nil {
-			continue 
+		// Scanăm id-ul și codul
+		if err := rows.Scan(&id, &code); err != nil {
+			continue // Ignorăm rândurile cu erori la citire
 		}
-		resultMap[name] = id
+		
+		// Un strat extra de siguranță: nu adăugăm în map codurile goale
+		// (în caz că ai date vechi care încă nu au primit codul la migrare)
+		if code != "" {
+			resultMap[code] = id
+		}
 	}
 	
 	return resultMap, nil
