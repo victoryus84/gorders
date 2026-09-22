@@ -199,7 +199,7 @@ func (svc *productService) GetAllProducts() ([]dto.ProductDTO, error) {
 		// 1. Extragem codul grupei în siguranță
 		groupCode := ""
 		if p.ProductGroupID != nil {
-			groupCode = p.ProductGroup.Code
+			groupCode = p.ProductGroup.Name
 			// NOTĂ: Dacă Flutter are nevoie de NUMELE grupei, pui p.ProductGroup.Name
 		}
 
