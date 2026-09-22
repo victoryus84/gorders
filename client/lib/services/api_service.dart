@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
-import '../core/constants.dart';
+import '../core/config.dart';
 import '../core/logger.dart';
 import '../models/client.dart';
 import '../models/contract.dart';
+import '../models/product.dart';
 
 class ApiService {
   // 1. CĂUTARE CLIENȚI
@@ -17,24 +18,24 @@ class ApiService {
       // 2. Apelăm ruta de căutare clienți
       final url = Uri.parse('${AppConfig.clientsSearchEndpoint}?q=$query');
       final response = await http.get(url, headers: AuthService.getHeaders());
-      
+
       // 3. Logăm JSON-ul primit de la server pentru debugging
       myLog("🚀 JSON RAW DE LA SERVER: ${response.body}");
 
-      // 4. Dacă răspunsul e OK, transformăm JSON-ul în List<Client>     
+      // 4. Dacă răspunsul e OK, transformăm JSON-ul în List<Client>
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
         return data.map((json) => Client.fromJson(json)).toList();
       }
     } catch (e) {
-      // 5. Dacă apare o eroare, o logăm cu myLog (nu uităm să includem și eroarea!)  
+      // 5. Dacă apare o eroare, o logăm cu myLog (nu uităm să includem și eroarea!)
       myLog("❌ (Clients) Eroare API Căutare : $e");
     }
     return [];
   }
 
   // 2. FETCH CONTRACTE (Piesa care lipsea!)
-Future<List<Contract>> fetchContracts(String clientId) async {
+  Future<List<Contract>> fetchContracts(String clientId) async {
     try {
       // 1. Apelăm ruta stabilită în Gin
       final url = Uri.parse('${AppConfig.contractsEndpointByClient}/$clientId');
@@ -53,5 +54,51 @@ Future<List<Contract>> fetchContracts(String clientId) async {
       myLog("❌ Eroare la contracte", error: e);
     }
     return [];
+  }
+
+  Future<List<Product>> fetchProducts() async {
+    try {
+      // Schimbă '/products' cu ruta ta reală din Go dacă e diferită
+      final url = Uri.parse(AppConfig.productsEndpoint);
+      final response = await http.get(url, headers: AuthService.getHeaders());
+
+      myLog("📥 RĂSPUNS RAW DE LA GO (Produse): ${response.body}");
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        // Transformăm lista de JSON-uri în lista noastră de obiecte Product
+        return data.map((json) => Product.fromJson(json)).toList();
+      } else {
+        myLog("❌ Eroare server la produse: ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      myLog("❌ Eroare rețea (produse): $e");
+      return [];
+    }
+  }
+
+  Future<bool> submitOrder(Map<String, dynamic> orderData) async {
+    // myLog("TRIMITEM SPRE GO: $orderData");
+    // return true; // <-- DECOMENTEAZĂ pentru a testa interfața fără să dai eroare la server
+
+    try {
+      final url = Uri.parse(AppConfig.ordersEndpoint);
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(orderData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        myLog("❌ Eroare server Go: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      myLog("❌ Eroare rețea: $e");
+      return false;
+    }
   }
 }

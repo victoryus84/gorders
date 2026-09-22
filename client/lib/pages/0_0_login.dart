@@ -1,4 +1,4 @@
-import 'package:gorders_mobile/core/constants.dart';
+import 'package:gorders_mobile/core/config.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;

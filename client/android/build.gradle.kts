@@ -5,16 +5,12 @@ allprojects {
     }
 }
 
-val fixedBuildDir = file("D:/Orders/frontend/build")
-
-rootProject.layout.buildDirectory.value(
-    rootProject.layout.projectDirectory.dir(fixedBuildDir.absolutePath)
-)
+// Correct Kotlin DSL syntax to force local project path
+rootProject.layout.buildDirectory.set(rootProject.file("../build"))
 
 subprojects {
-    val newSubprojectBuildDir: Directory = 
-        rootProject.layout.buildDirectory.get().dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    val newBuildDir = rootProject.layout.buildDirectory.dir(project.name).get().asFile
+    project.layout.buildDirectory.set(newBuildDir)
 }
 
 subprojects {
