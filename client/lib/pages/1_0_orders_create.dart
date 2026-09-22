@@ -196,36 +196,45 @@ class _OrdersCreatePageState extends State<OrdersCreatePage> {
   }
 
   Widget _buildCategoriesBar() {
-    // Dacă nu avem produse încă (se încarcă), nu arătăm nici bara
     if (_controller.availableProducts.isEmpty) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: 45, // Înălțime fixă pentru butoanele orizontale
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _controller.categories.length,
-        itemBuilder: (context, index) {
-          final category = _controller.categories[index];
-          final isSelected = _controller.selectedCategory == category;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxHeight:
+            140, // Încape cam 3 rânduri de butoane. Ajustează după preferințe!
+      ),
+      // Punem scrollbar ca utilizatorul să vadă că mai există categorii jos
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Wrap(
+              spacing: 8.0, // Spațiul orizontal dintre butoane
+              runSpacing: 8.0, // Spațiul vertical dintre rânduri
+              children: _controller.categories.map((category) {
+                final isSelected = _controller.selectedCategory == category;
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ChoiceChip(
-              label: Text(category),
-              selected: isSelected,
-              selectedColor: Colors.blue,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.black,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              onSelected: (bool selected) {
-                if (selected) {
-                  _controller.selectCategory(category);
-                }
-              },
+                return ChoiceChip(
+                  label: Text(category),
+                  selected: isSelected,
+                  selectedColor: Colors.blue,
+                  labelStyle: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                  onSelected: (bool selected) {
+                    if (selected) {
+                      _controller.selectCategory(category);
+                    }
+                  },
+                );
+              }).toList(),
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
   }
