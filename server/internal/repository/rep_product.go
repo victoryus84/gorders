@@ -13,7 +13,7 @@ type ProductRepository interface {
 	FindProductGroupByID(id uint) (*models.ProductGroup, error)
 	FindProductByID(id uint) (*models.Product, error)
 	FindProductsByQuery(query string) ([]models.Product, error)
-	GetFirst1000Products() ([]models.Product, error) 
+	GetAllProducts() ([]models.Product, error)
 	// Group product methods
 	CreateProductGroup(group *models.ProductGroup) error
 	UpsertProductGroup(group *models.ProductGroup) error
@@ -57,7 +57,7 @@ func (rep *productRepository) FindProductsByQuery(query string) ([]models.Produc
 		return []models.Product{}, nil
 	}
 	var products []models.Product
-	
+
 	// Acum căutăm doar prin câmpurile reale ale produsului!
 	err := rep.db.
 		Where("name ILIKE ? OR code ILIKE ? OR article ILIKE ?",
@@ -79,9 +79,16 @@ func (rep *productRepository) UpsertProductsBatch(items []models.Product, batchS
 	}).CreateInBatches(items, batchSize).Error
 }
 
-func (rep *productRepository) GetFirst1000Products() ([]models.Product, error) {
+func (rep *productRepository) GetAllProducts() ([]models.Product, error) {
 	var products []models.Product
-	err := rep.db.Limit(1000).Find(&products).Error
+
+	// Preload("ProductGroup") populează structura p.ProductGroup cu datele reale din BD
+	err := rep.db.
+		Preload("ProductGroup").
+		Preload("Unit").   // Opțional: dacă vrei să trimiți și numele unității (ex: "Buc")
+		Preload("VatTax"). // Opțional: dacă vrei valoarea TVA-ului
+		Find(&products).Error
+
 	return products, err
 }
 
@@ -100,20 +107,20 @@ func (rep *productRepository) UpsertProductGroup(group *models.ProductGroup) err
 }
 
 func (rep *productRepository) GetGroupIDMap() (map[string]uint, error) {
-    var groups []models.ProductGroup
-    if err := rep.db.Select("id", "code").Find(&groups).Error; err != nil {
-        return nil, err
-    }
-    
-    groupMap := make(map[string]uint)
-    for _, g := range groups {
-        groupMap[g.Code] = g.ID
-    }
-    return groupMap, nil
+	var groups []models.ProductGroup
+	if err := rep.db.Select("id", "code").Find(&groups).Error; err != nil {
+		return nil, err
+	}
+
+	groupMap := make(map[string]uint)
+	for _, g := range groups {
+		groupMap[g.Code] = g.ID
+	}
+	return groupMap, nil
 }
 
 func (rep *productRepository) GetAllProductGroups() ([]models.ProductGroup, error) {
-    var groups []models.ProductGroup
-    err := rep.db.Find(&groups).Error
-    return groups, err
+	var groups []models.ProductGroup
+	err := rep.db.Find(&groups).Error
+	return groups, err
 }

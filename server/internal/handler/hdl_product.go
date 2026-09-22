@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/victoryus84/gorders/internal/dto"
-	"github.com/victoryus84/gorders/internal/service"
-	"github.com/victoryus84/gorders/internal/utils" 	
 	"github.com/victoryus84/gorders/internal/middleware"
+	"github.com/victoryus84/gorders/internal/service"
+	"github.com/victoryus84/gorders/internal/utils"
 )
 
 type ProductHandler struct {
 	// [CORECȚIE 2]: Fără steluță (*) la interfață!
-	svc service.ProductService 
+	svc service.ProductService
 }
 
 // [CORECȚIE 2]: Fără steluță (*) la interfață în argument!
@@ -49,7 +49,7 @@ func (hdl *ProductHandler) CreateProductGroup(ctx *gin.Context) {
 // GetProducts - Obține primii 1000 de produse
 func (hdl *ProductHandler) GetProducts(ctx *gin.Context) {
 	// [ATENȚIE]: Asigură-te că funcția există în interfața ProductService!
-	products, err := hdl.svc.GetFirst1000Products()
+	products, err := hdl.svc.GetAllProducts()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

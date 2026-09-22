@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/victoryus84/gorders/internal/config"
-	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/dto"
+	"github.com/victoryus84/gorders/internal/kafka"
 	"github.com/victoryus84/gorders/internal/logger"
 	"github.com/victoryus84/gorders/internal/models"
 	"github.com/victoryus84/gorders/internal/repository"
@@ -17,7 +17,7 @@ import (
 type ProductService interface {
 	ProcessProductImport(requests []dto.ProductDTO) dto.ImportResult
 	ProcessProductGroupImport(dtos []dto.ProductGroupDTO) dto.ImportResult
-	GetFirst1000Products() ([]models.Product, error)
+	GetAllProducts() ([]dto.ProductDTO, error)
 }
 
 // 2. STRUCTURA PRIVATĂ
@@ -25,8 +25,8 @@ type productService struct {
 	rep_prd repository.ProductRepository
 	rep_unt repository.UnitRepository
 	rep_vat repository.VatTaxRepository
-	cfg *config.Config
-	kfk *kafka.Producer
+	cfg     *config.Config
+	kfk     *kafka.Producer
 }
 
 // 3. CONSTRUCTORUL PENTRU UBER FX
@@ -40,8 +40,8 @@ func NewProductService(
 		rep_prd: rep_prd,
 		rep_unt: rep_unt,
 		rep_vat: rep_vat,
-		cfg: cfg,
-		kfk: kfk,
+		cfg:     cfg,
+		kfk:     kfk,
 	}
 }
 
@@ -187,9 +187,37 @@ func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroup
 	}
 }
 
-// Funcția care aduce primii 1000 de produse
-func (svc *productService) GetFirst1000Products() ([]models.Product, error) {
-	return svc.rep_prd.GetFirst1000Products()
+// Funcția care aduce toate produsele
+func (svc *productService) GetAllProducts() ([]dto.ProductDTO, error) {
+	products, err := svc.rep_prd.GetAllProducts()
+	if err != nil {
+		return nil, err
+	}
+
+	var response []dto.ProductDTO
+	for _, p := range products {
+		// 1. Extragem codul grupei în siguranță
+		groupCode := ""
+		if p.ProductGroupID != nil {
+			groupCode = p.ProductGroup.Code
+			// NOTĂ: Dacă Flutter are nevoie de NUMELE grupei, pui p.ProductGroup.Name
+		}
+
+		// 2. Protejăm pointer-ul de float64 (TVA) pentru a nu avea același pointer în toată lista
+		vatValue := p.VatTax.Rate
+
+		response = append(response, dto.ProductDTO{
+			Code:        p.Code,
+			Name:        p.Name,
+			Description: p.Description,
+			Article:     p.Article,
+			Unit:        p.Unit.Name,
+			VatCode:     p.VatTax.Code,
+			VatTax:      &vatValue,
+			GroupCode:   groupCode, // L-am legat aici
+		})
+	}
+	return response, nil
 }
 
 // Funcția pentru Grupe de Produse
@@ -229,4 +257,3 @@ func (svc *productService) limitErrors(skipped []map[string]string, limit int) [
 	}
 	return skipped
 }
-
