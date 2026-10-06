@@ -27,7 +27,7 @@ func stringPtr(str string) *string {
 	return &str
 }
 
-func logSkip(name, reason string) map[string]string {
-	return map[string]string{"item": name, "reason": reason}
+func logSkip(name, reason string) map[string]any {
+	return map[string]any{"item": name, "reason": reason}
 }
 

@@ -214,7 +214,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessImport(requests []dto.{{.Entity.
 	}
 
 	itemsToSave := make([]models.{{.Entity.Name}}, 0, len(requests))
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 
 {{if .Entity.HasGroup}}	// Încărcăm dicționarul pentru maparea grupei
 	groupMap, _ := svc.repo.GetGroupIDMap()
@@ -262,7 +262,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessGroupImport(requests []dto.{{.En
 	}
 
 	groupsToSave := make([]models.{{.Entity.Name}}Group, 0, len(requests))
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 
 	// Aducem dicționarul ca să legăm sub-categoriile de părinții lor (ParentCode -> ParentID)
 	groupMap, _ := svc.repo.GetGroupIDMap()

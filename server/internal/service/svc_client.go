@@ -45,7 +45,7 @@ func NewClientService(
 func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.ImportResult {
 	// 1. Pregătim "cutia" în care adunăm clienții
 	clientsToSave := make([]*models.Client, 0, len(requests))
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 	topic := svc.cfg.GetTopic("clients")
 
 	// Extragem toate grupele din baza de date pentru a le avea la îndemână
@@ -59,7 +59,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 	for _, req := range requests {
 		// A. Validare de bază (Logica ta din API-ul vechi)
 		if req.ClientTypeID == 0 || strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.FiscalID) == "" {
-			skipped = append(skipped, map[string]string{"fiscal_id": req.FiscalID, "reason": "missing_required_fields"})
+			skipped = append(skipped, map[string]any{"fiscal_id": req.FiscalID, "reason": "missing_required_fields"})
 			continue
 		}
 
@@ -118,7 +118,7 @@ func (svc *clientService) ProcessClientImport(requests []dto.ClientDTO) dto.Impo
 
 func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO) dto.ImportResult {
 	created := make([]*models.ClientGroup, 0)
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 	topic := svc.cfg.GetTopic("client_groups")
 
 	// 1. INIȚIALIZAREA: Încărcăm grupele existente o singură dată
@@ -132,7 +132,7 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 	for _, req := range requests {
 		// A. Validare de bază
 		if strings.TrimSpace(req.Name) == "" {
-			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
+			skipped = append(skipped, map[string]any{"name": req.Name, "reason": "missing_required_fields"})
 			continue
 		}
 
@@ -161,7 +161,7 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 
 		// E. Salvare
 		if err := svc.rep.UpsertClientGroup(clientgroup); err != nil {
-			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
+			skipped = append(skipped, map[string]any{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
 			continue
 		}
 
@@ -188,7 +188,7 @@ func (svc *clientService) ProcessClientGroupImport(requests []dto.ClientGroupDTO
 
 // ProcessAddressImport - Importul de adrese
 func (svc *clientService) ProcessAddressImport(requests []dto.ClientAddressDTO, ownerID uint) dto.ImportResult {
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 
 	// ==========================================
 	// 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
@@ -310,7 +310,7 @@ func (svc *clientService) sanitizeEmail(email string) *string {
 	return &raw
 }
 
-func (svc *clientService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+func (svc *clientService) limitErrors(skipped []map[string]any, limit int) []map[string]any {
 	if len(skipped) > limit {
 		return skipped[:limit]
 	}

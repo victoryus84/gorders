@@ -19,6 +19,8 @@ type ProductRepository interface {
 	UpsertProductGroup(group *models.ProductGroup) error
 	GetAllProductGroups() ([]models.ProductGroup, error)
 	GetGroupIDMap() (map[string]uint, error)
+	// Price product methods
+	UpsertProductPrice(price *models.PriceProduct) error
 }
 
 // STRUCTURA
@@ -51,7 +53,6 @@ func (rep *productRepository) FindProductByID(id uint) (*models.Product, error) 
 	return &product, err
 }
 
-// [CORECȚIE AICI]: Am schimbat coloanele din ILIKE! Căutăm după Nume, Cod sau Articol.
 func (rep *productRepository) FindProductsByQuery(query string) ([]models.Product, error) {
 	if len(query) < 3 {
 		return []models.Product{}, nil
@@ -66,7 +67,6 @@ func (rep *productRepository) FindProductsByQuery(query string) ([]models.Produc
 	return products, err
 }
 
-// [NOU]: Motorul de sincronizare din 1C!
 func (rep *productRepository) UpsertProductsBatch(items []models.Product, batchSize int) error {
 	if len(items) == 0 {
 		return nil
@@ -123,4 +123,14 @@ func (rep *productRepository) GetAllProductGroups() ([]models.ProductGroup, erro
 	var groups []models.ProductGroup
 	err := rep.db.Find(&groups).Error
 	return groups, err
+}
+
+// ==========================================
+// METODE SPECIFICE PENTRU PRETURI
+// ==========================================
+func (rep *productRepository) UpsertProductPrice(price *models.PriceProduct) error {
+	return rep.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "code"}},
+		DoUpdates: clause.AssignmentColumns([]string{"price"}),
+	}).Create(price).Error
 }

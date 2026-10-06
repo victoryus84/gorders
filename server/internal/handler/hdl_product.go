@@ -46,16 +46,28 @@ func (hdl *ProductHandler) CreateProductGroup(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, result)
 }
 
-// GetProducts - Obține primii 1000 de produse
 func (hdl *ProductHandler) GetProducts(ctx *gin.Context) {
 	// [ATENȚIE]: Asigură-te că funcția există în interfața ProductService!
-	products, err := hdl.svc.GetAllProducts()
+	products, err := hdl.svc.GetProducts()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, products)
+}
+
+func (hdl *ProductHandler) CreateProductPrice(ctx *gin.Context) {
+	requests, err := utils.ParseBody[dto.ProductPriceDTO](ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Format invalid: " + err.Error()})
+		return
+	}
+
+	// [ATENȚIE]: Asigură-te că funcția există în interfața ProductService!
+	result := hdl.svc.ProcessProductPriceImport(requests)
+
+	ctx.JSON(http.StatusCreated, result)
 }
 
 func RegisterProductRoutes(rte *gin.Engine, hdl *ProductHandler) {
@@ -65,5 +77,6 @@ func RegisterProductRoutes(rte *gin.Engine, hdl *ProductHandler) {
 		products.GET("", hdl.GetProducts)
 		products.POST("", hdl.CreateProduct)
 		products.POST("/groups", hdl.CreateProductGroup)
+		products.POST("/prices", hdl.CreateProductPrice)
 	}
 }

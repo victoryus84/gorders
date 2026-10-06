@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/victoryus84/gorders/internal/config"
 	"github.com/victoryus84/gorders/internal/dto"
@@ -17,7 +18,8 @@ import (
 type ProductService interface {
 	ProcessProductImport(requests []dto.ProductDTO) dto.ImportResult
 	ProcessProductGroupImport(dtos []dto.ProductGroupDTO) dto.ImportResult
-	GetAllProducts() ([]dto.ProductDTO, error)
+	ProcessProductPriceImport(dtos []dto.ProductPriceDTO) dto.ImportResult
+	GetProducts() ([]dto.ProductDTO, error)
 }
 
 // 2. STRUCTURA PRIVATĂ
@@ -55,7 +57,7 @@ func (svc *productService) ProcessProductImport(requests []dto.ProductDTO) dto.I
 	}
 
 	productsToSave := make([]models.Product, 0, len(requests))
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 
 	// Extragem dicționarele, cu tratare minimală a erorilor
 	unitMap, err := svc.rep_unt.GetUnitIDMap()
@@ -77,7 +79,7 @@ func (svc *productService) ProcessProductImport(requests []dto.ProductDTO) dto.I
 	for _, req := range requests {
 		// Validare
 		if strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.Name) == "" {
-			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "missing_required_fields"})
+			skipped = append(skipped, map[string]any{"code": req.Code, "reason": "missing_required_fields"})
 			continue
 		}
 
@@ -119,7 +121,7 @@ func (svc *productService) ProcessProductImport(requests []dto.ProductDTO) dto.I
 
 func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroupDTO) dto.ImportResult {
 	created := make([]*models.ProductGroup, 0)
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 	topic := svc.cfg.GetTopic("product_groups")
 
 	// 1. INIȚIALIZAREA: Încărcăm grupele existente o singură dată
@@ -133,14 +135,14 @@ func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroup
 	for _, req := range requests {
 		// A. Validare de bază
 		if strings.TrimSpace(req.Name) == "" {
-			skipped = append(skipped, map[string]string{"name": req.Name, "reason": "missing_required_fields"})
+			skipped = append(skipped, map[string]any{"name": req.Name, "reason": "missing_required_fields"})
 			continue
 		}
 
 		// B. Verificare duplicate
 		// existing, err := svc.rep.FindClientGroupByCode(req.Code)
 		// if err == nil && existing != nil {
-		//     skipped = append(skipped, map[string]string{"name": req.Name, "reason": "duplicate"})
+		//     skipped = append(skipped, map[string]any{"name": req.Name, "reason": "duplicate"})
 		//     continue
 		// }
 
@@ -162,7 +164,7 @@ func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroup
 
 		// E. Salvare
 		if err := svc.rep_prd.UpsertProductGroup(productgroup); err != nil {
-			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
+			skipped = append(skipped, map[string]any{"code": req.Code, "reason": "upsert_failed: " + err.Error()})
 			continue
 		}
 
@@ -187,23 +189,89 @@ func (svc *productService) ProcessProductGroupImport(requests []dto.ProductGroup
 	}
 }
 
-// Funcția care aduce toate produsele
-func (svc *productService) GetAllProducts() ([]dto.ProductDTO, error) {
-	products, err := svc.rep_prd.GetAllProducts()
+func (svc *productService) ProcessProductPriceImport(requests []dto.ProductPriceDTO) dto.ImportResult {
+    // Am corectat PriceProduct în ProductPrice ca să se potrivească
+    created := make([]*models.PriceProduct, 0)
+    skipped := make([]map[string]any, 0)
+    
+    // topic := svc.cfg.GetTopic("product_prices") // Decomentează când implementezi trimiterea către Kafka
+
+   for _, req := range requests {
+    // A. Validare de bază
+    if req.Price == 0 {
+        skipped = append(skipped, map[string]any{
+			"price": req.ProductCode, 
+			"reason": "missing price",
+		})
+        continue
+    }
+
+    // --- NOU: LOGICA DE CONVERSIE A DATEI ---
+    var dateFromPtr *time.Time // Implicit este nil (null)
+    if req.DateFrom != "" {
+        // Transformăm textul în time.Time. 
+        // time.RFC3339 așteaptă formatul standard gen: "2026-10-05T15:04:05Z"
+        parsedTime, err := time.Parse(time.RFC3339, req.DateFrom)
+        if err != nil {
+            // Dacă 1C trimite o dată greșită, sărim peste produs
+            skipped = append(skipped, map[string]any{
+				"code": req.ProductCode, 
+				"reason": "invalid_date_format",
+			})
+            continue
+        }
+        dateFromPtr = &parsedTime // Luăm adresa memoriei (pointerul) ca să se potrivească cu *time.Time
+    }
+
+    // C. Mapare DTO -> Model
+    productprice := &models.PriceProduct{
+        Price:    req.Price,
+        DateFrom: dateFromPtr, // <--- Acum e pointerul corect! Dacă textul era gol, va fi nil.
+    }
+        // D. Salvare (unul câte unul) - Dacă ai multe, pe viitor facem aici acel UpsertBatch!
+        if err := svc.rep_prd.UpsertProductPrice(productprice); err != nil {
+            skipped = append(skipped, map[string]any{
+				"code": req.ProductCode, 
+				"reason": "upsert_failed: " + err.Error(),
+			})
+            continue
+        }
+
+        created = append(created, productprice)
+    }
+
+    // AICI se termină funcția de import!
+    return dto.ImportResult{
+        Status:         "success",
+        TotalProcessed: len(created),
+        TotalSkipped:   len(skipped),
+        ErrorsPreview:  svc.limitErrors(skipped, 20),
+        Message:        "Import prețuri finalizat",
+    }
+}
+
+// GetProducts aduce tot nomenclatorul și îl mapează în DTO-uri pentru Flutter
+func (svc *productService) GetProducts() ([]dto.ProductDTO, error) {
+	// 1. Aducem modelele brute din DB (care includ relațiile via Preload)
+	// Notă: Dacă în repozitoriul tău metoda se numește altfel (ex: GetAllProducts), modifică aici:
+	products, err := svc.rep_prd.GetAllProducts() 
 	if err != nil {
 		return nil, err
 	}
 
+	// 2. Pregătim lista de răspuns
 	var response []dto.ProductDTO
+
+	// 3. Mapăm fiecare model GORM în ProductDTO
 	for _, p := range products {
-		// 1. Extragem codul grupei în siguranță
+		// Protecție: Extragem codul grupei doar dacă produsul are o grupă atașată
 		groupCode := ""
 		if p.ProductGroupID != nil {
-			groupCode = p.ProductGroup.Name
-			// NOTĂ: Dacă Flutter are nevoie de NUMELE grupei, pui p.ProductGroup.Name
+			groupCode = p.ProductGroup.Code 
 		}
 
-		// 2. Protejăm pointer-ul de float64 (TVA) pentru a nu avea același pointer în toată lista
+		// Protecție: Salvăm valoarea TVA într-o variabilă locală pentru a prelua adresa (&) corect
+		// ATENȚIE: Schimbă '.Value' cu numele real din models.VatTax (ex: .Tax, .Rate)
 		vatValue := p.VatTax.Rate
 
 		response = append(response, dto.ProductDTO{
@@ -214,13 +282,12 @@ func (svc *productService) GetAllProducts() ([]dto.ProductDTO, error) {
 			Unit:        p.Unit.Name,
 			VatCode:     p.VatTax.Code,
 			VatTax:      &vatValue,
-			GroupCode:   groupCode, // L-am legat aici
+			GroupCode:   groupCode,
 		})
 	}
+
 	return response, nil
 }
-
-// Funcția pentru Grupe de Produse
 
 // --- HELPER METODE PRIVATE ---
 
@@ -251,7 +318,7 @@ func (svc *productService) resolveGroupID(code string, groupMap map[string]uint)
 	return nil
 }
 
-func (svc *productService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+func (svc *productService) limitErrors(skipped []map[string]any, limit int) []map[string]any {
 	if len(skipped) > limit {
 		return skipped[:limit]
 	}

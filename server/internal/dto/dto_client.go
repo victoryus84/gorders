@@ -35,6 +35,6 @@ type ImportResult struct {
 	Status         string              `json:"status"`
 	TotalProcessed int                 `json:"total_processed"`
 	TotalSkipped   int                 `json:"total_skipped"`
-	ErrorsPreview  []map[string]string `json:"errors_preview"`
+	ErrorsPreview  []map[string]any    `json:"errors_preview"`
 	Message        string              `json:"message"`
 }

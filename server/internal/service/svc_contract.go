@@ -38,7 +38,7 @@ func NewContractService(rep repository.ContractRepository, clientRep repository.
 // --- LOGICA DE BUSINESS (SYNC) ---
 
 func (svc *contractService) ProcessContractImport(requests []dto.ContractDTO, ownerID uint) dto.ImportResult {
-	skipped := make([]map[string]string, 0)
+	skipped := make([]map[string]any, 0)
 
 	// ==========================================
 	// 1. DICȚIONARUL ÎN RAM (1 singur drum la DB!)
@@ -144,7 +144,7 @@ func (svc *contractService) mapDTOToModel(req dto.ContractDTO, clientID uint, ow
 	}
 }
 
-func (svc *contractService) limitErrors(skipped []map[string]string, limit int) []map[string]string {
+func (svc *contractService) limitErrors(skipped []map[string]any, limit int) []map[string]any {
 	if len(skipped) > limit {
 		return skipped[:limit]
 	}
