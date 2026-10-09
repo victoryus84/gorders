@@ -269,7 +269,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessGroupImport(requests []dto.{{.En
 
 	for _, req := range requests {
 		if strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.Name) == "" {
-			skipped = append(skipped, map[string]string{"code": req.Code, "reason": "missing_required"})
+			skipped = append(skipped, map[string]any{"code": req.Code, "reason": "missing_required"})
 			continue
 		}
 
