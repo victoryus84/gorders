@@ -18,14 +18,6 @@ func NewValuteHandler(svc service.ValuteService) *ValuteHandler {
 	return &ValuteHandler{svc: svc}
 }
 
-// Înregistrarea rutelor pentru Uber Fx (module.go)
-func RegisterValuteRoutes(r *gin.Engine, h *ValuteHandler) {
-	api := r.Group("/api/valutes")
-	{
-		api.POST("/import", h.Create)
-	}
-}
-
 // Sincronizare Entități Principale
 func (h *ValuteHandler) Create(c *gin.Context) {
 	requests, err := utils.ParseBody[dto.ValuteDTO](c)
@@ -43,5 +35,3 @@ func (h *ValuteHandler) Create(c *gin.Context) {
 	}
 	c.JSON(status, result)
 }
-
-

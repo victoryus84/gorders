@@ -16,4 +16,5 @@ var Module = fx.Provide(
 	NewProductRepository,
 	NewUnitRepository,
 	NewVatTaxRepository,	
+	NewValuteRepository,
 )
