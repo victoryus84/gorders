@@ -181,9 +181,9 @@ func SeedChannels(db *gorm.DB) error {
 func SeedValutes(db *gorm.DB) error {
 	valutes := []models.Valute{
 		{Code: "MDL", Name: "Leu moldovenesc", Description: "Moldovan Leu", Symbol: "L", IsBase: true},
-		{Code: "USD", Name: "US Dollar", Description: "United States Dollar", Symbol: "$"},
+		{Code: "USD", Name: "Dollar american", Description: "United States Dollar", Symbol: "$"},
 		{Code: "EUR", Name: "Euro", Description: "European Union Euro", Symbol: "€"},
-		{Code: "RON", Name: "Leu român", Description: "Romanian Leu", Symbol: "L"},
+		{Code: "RON", Name: "Leu românesc", Description: "Romanian Leu", Symbol: "L"},
 	}
 
 	for _, valute := range valutes {
