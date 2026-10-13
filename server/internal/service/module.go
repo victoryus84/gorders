@@ -10,4 +10,5 @@ var Module = fx.Provide(
 	NewClientService,
 	NewContractService,
 	NewProductService,
+	NewCurrencyService,
 )

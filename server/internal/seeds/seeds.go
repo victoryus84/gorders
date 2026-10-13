@@ -19,7 +19,7 @@ func RunAllSeeds(db *gorm.DB) {
 		{"IncomeTaxes", SeedIncomeTaxes},
 		{"Units", SeedUnits},
 		{"Channels", SeedChannels},
-		{"Valutes", SeedValutes},
+		{"Currencys", SeedCurrencys},
 	}
 
 	var wg sync.WaitGroup
@@ -178,28 +178,28 @@ func SeedChannels(db *gorm.DB) error {
 }
 
 
-func SeedValutes(db *gorm.DB) error {
-	valutes := []models.Valute{
+func SeedCurrencys(db *gorm.DB) error {
+	currencys := []models.Currency{
 		{Code: "MDL", Name: "Leu moldovenesc", Description: "Moldovan Leu", Symbol: "L", IsBase: true},
 		{Code: "USD", Name: "Dollar american", Description: "United States Dollar", Symbol: "$"},
 		{Code: "EUR", Name: "Euro", Description: "European Union Euro", Symbol: "€"},
 		{Code: "RON", Name: "Leu românesc", Description: "Romanian Leu", Symbol: "L"},
 	}
 
-	for _, valute := range valutes {
+	for _, currency := range currencys {
 		// Check if it already exists
-		var existing models.Valute
-		if err := db.Where("name = ?", valute.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
+		var existing models.Currency
+		if err := db.Where("name = ?", currency.Name).First(&existing).Error; err == gorm.ErrRecordNotFound {
 			// Insert if not found
-			if err := db.Create(&valute).Error; err != nil {
-				logger.LogError(fmt.Sprintf("❌ Failed to seed Valute '%s':", valute.Name), err)
+			if err := db.Create(&currency).Error; err != nil {
+				logger.LogError(fmt.Sprintf("❌ Failed to seed Currency '%s':", currency.Name), err)
 				return err
 			}
-			logger.LogInfo(fmt.Sprintf("✅ Seeded Valute: %s\n", valute.Name))
+			logger.LogInfo(fmt.Sprintf("✅ Seeded Currency: %s\n", currency.Name))
 		} else if err != nil {
 			return err
 		} else {
-			logger.LogInfo(fmt.Sprintf("⏭️ Valute '%s' already exists\n", valute.Name))
+			logger.LogInfo(fmt.Sprintf("⏭️ Currency '%s' already exists\n", currency.Name))
 		}
 	}
 	return nil

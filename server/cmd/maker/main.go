@@ -200,11 +200,11 @@ type {{.Entity.Name}}Service interface {
 
 // 2. STRUCTURA PRIVATĂ
 type {{.Entity.LowerName}}Service struct {
-	repo repository.{{.Entity.Name}}Repository
+	rep repository.{{.Entity.Name}}Repository
 }
 
-func New{{.Entity.Name}}Service(repo repository.{{.Entity.Name}}Repository) {{.Entity.Name}}Service {
-	return &{{.Entity.LowerName}}Service{repo: repo}
+func New{{.Entity.Name}}Service(rep repository.{{.Entity.Name}}Repository) {{.Entity.Name}}Service {
+	return &{{.Entity.LowerName}}Service{rep: rep}
 }
 
 // 3. IMPLEMENTAREA LOGICII PRINCIPALE
@@ -217,7 +217,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessImport(requests []dto.{{.Entity.
 	skipped := make([]map[string]any, 0)
 
 {{if .Entity.HasGroup}}	// Încărcăm dicționarul pentru maparea grupei
-	groupMap, _ := svc.repo.GetGroupIDMap()
+	groupMap, _ := svc.rep.GetGroupIDMap()
 {{end}}
 	for _, req := range requests {
 		// Validare de bază
@@ -238,7 +238,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessImport(requests []dto.{{.Entity.
 		itemsToSave = append(itemsToSave, item)
 	}
 
-	if err := svc.repo.UpsertBatch(itemsToSave, 500); err != nil {
+	if err := svc.rep.UpsertBatch(itemsToSave, 500); err != nil {
 		return dto.ImportResult{Status: "error", Message: "Eroare la salvare: " + err.Error()}
 	}
 
@@ -251,7 +251,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessImport(requests []dto.{{.Entity.
 }
 
 func (svc *{{.Entity.LowerName}}Service) FindAll() ([]models.{{.Entity.Name}}, error) {
-	return svc.repo.FindAll()
+	return svc.rep.FindAll()
 }
 
 {{if .Entity.HasGroup}}
@@ -265,7 +265,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessGroupImport(requests []dto.{{.En
 	skipped := make([]map[string]any, 0)
 
 	// Aducem dicționarul ca să legăm sub-categoriile de părinții lor (ParentCode -> ParentID)
-	groupMap, _ := svc.repo.GetGroupIDMap()
+	groupMap, _ := svc.rep.GetGroupIDMap()
 
 	for _, req := range requests {
 		if strings.TrimSpace(req.Code) == "" || strings.TrimSpace(req.Name) == "" {
@@ -289,7 +289,7 @@ func (svc *{{.Entity.LowerName}}Service) ProcessGroupImport(requests []dto.{{.En
 		groupsToSave = append(groupsToSave, group)
 	}
 
-	if err := svc.repo.UpsertGroupsBatch(groupsToSave, 500); err != nil {
+	if err := svc.rep.UpsertGroupsBatch(groupsToSave, 500); err != nil {
 		return dto.ImportResult{Status: "error", Message: "Eroare la salvarea grupelor: " + err.Error()}
 	}
 

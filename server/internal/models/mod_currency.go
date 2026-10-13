@@ -4,8 +4,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// ********** Valute **********
-type Valute struct {
+// ********** Currency **********
+type Currency struct {
 	gorm.Model
 	UUIDModel 	`gorm:"embedded"`
 	Code string `gorm:"type:varchar(10);not null;unique"`

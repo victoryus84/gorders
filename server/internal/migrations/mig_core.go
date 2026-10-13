@@ -10,7 +10,7 @@ func GetAllModels() []interface{} {
 		// Reference data
 		&models.ClientType{},
 		&models.PriceType{},
-		&models.Valute{},
+		&models.Currency{},
 		// Main entities
 		&models.User{},
 		// Client methods
@@ -37,7 +37,7 @@ func TableNameToModel(tableName string) string {
 	tableMap := map[string]string{
 		"client_types":       "ClientType",
 		"price_types":        "PriceType",
-		"valutes":            "Valute",
+		"currencys":            "Currency",
 		"users":              "User",
 		"clients":            "Client",
 		"client_addresses":   "ClientAddress",

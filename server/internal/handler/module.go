@@ -12,7 +12,6 @@ var Module = fx.Options(
         NewContractHandler,
         NewProductHandler,
         NewUserHandler,
-        NewValuteHandler,
     ),
     // 2. Aici îi spunem lui Fx să execute funcțiile de mapare a rutelor!
     fx.Invoke(
